@@ -41,6 +41,8 @@ class ImuSensor(Sensor):
         :param synchronous_mode: use in synchronous mode?
         :type synchronous_mode: bool
         """
+
+        print('carla_actor.attr', carla_actor.attributes)
         super(ImuSensor, self).__init__(uid=uid,
                                         name=name,
                                         parent=parent,
@@ -48,8 +50,8 @@ class ImuSensor(Sensor):
                                         node=node,
                                         carla_actor=carla_actor,
                                         synchronous_mode=synchronous_mode)
-
-        self.imu_publisher = node.new_publisher(Imu, self.get_topic_prefix(), qos_profile=10)
+        print('==============================================================sensor_tick_time', self.sensor_tick_time)
+        self.imu_publisher = node.new_publisher(Imu, self.get_topic_prefix(), qos_profile=100)
         self.listen()
 
     def destroy(self):
@@ -57,7 +59,9 @@ class ImuSensor(Sensor):
         self.node.destroy_publisher(self.imu_publisher)
 
     # pylint: disable=arguments-differ
+    count = 0
     def sensor_data_updated(self, carla_imu_measurement):
+        
         """
         Function to transform a received imu measurement into a ROS Imu message
 
@@ -66,7 +70,8 @@ class ImuSensor(Sensor):
         """
         imu_msg = Imu()
         imu_msg.header = self.get_msg_header(timestamp=carla_imu_measurement.timestamp)
-
+        self.count +=1 
+        # print('imu_msg.header', imu_msg.header, self.count)
         # Carla uses a left-handed coordinate convention (X forward, Y right, Z up).
         # Here, these measurements are converted to the right-handed ROS convention
         #  (X forward, Y left, Z up).

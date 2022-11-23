@@ -400,6 +400,20 @@ class ActorFactory(object):
                 actor = Gnss(uid, name, parent, spawn_pose, self.node,
                              carla_actor, self.sync_mode)
             elif carla_actor.type_id.startswith("sensor.other.imu"):
+                # imu_bp = self.blueprint_lib.find('sensor.other.imu')
+
+                # imu_location = carla.Location(0,0,0)
+                # imu_rotation = carla.Rotation(0,0,0)
+                # imu_transform = carla.Transform(imu_location,imu_rotation)
+              
+                # ego_imu = world.spawn_actor(imu_bp ,imu_transform, attach_to=ego_vehicle, attachment_type=carla.AttachmentType.Rigid)
+                # def imu_callback(imu): 
+                #     print(“IMU measure:\n”+str(imu)+’\n’)ego_imu.listen(lambda imu: imu_callback(imu))
+
+                print('before, carla_actor.attributes = ',carla_actor.attributes)
+                # imu_bp.set_attribute("sensor_tick",str(3.0))
+                carla_actor.attributes['sensor_tick'] = 100
+                print('after set sensor_tick=100, carla_actor.attributes = ',carla_actor.attributes)
                 actor = ImuSensor(uid, name, parent, spawn_pose, self.node,
                                   carla_actor, self.sync_mode)
             elif carla_actor.type_id.startswith("sensor.other.collision"):

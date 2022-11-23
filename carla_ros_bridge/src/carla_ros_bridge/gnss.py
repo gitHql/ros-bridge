@@ -47,7 +47,6 @@ class Gnss(Sensor):
                                    node=node,
                                    carla_actor=carla_actor,
                                    synchronous_mode=synchronous_mode)
-
         self.gnss_publisher = node.new_publisher(NavSatFix,
                                                  self.get_topic_prefix(),
                                                  qos_profile=10)

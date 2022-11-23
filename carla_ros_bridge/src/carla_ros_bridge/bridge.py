@@ -389,7 +389,7 @@ def main(args=None):
 
     parameters['host'] = carla_bridge.get_param('host', 'localhost')
     parameters['port'] = carla_bridge.get_param('port', 2000)
-    parameters['timeout'] = carla_bridge.get_param('timeout', 2)
+    parameters['timeout'] = 20 #carla_bridge.get_param('timeout', 2)
     parameters['passive'] = carla_bridge.get_param('passive', False)
     parameters['synchronous_mode'] = carla_bridge.get_param('synchronous_mode', True)
     parameters['synchronous_mode_wait_for_vehicle_control_command'] = carla_bridge.get_param(
@@ -442,7 +442,7 @@ def main(args=None):
             carla_world.tick()
 
         carla_bridge.initialize_bridge(carla_client.get_world(), parameters)
-
+        
         carla_bridge.spin()
 
     except (IOError, RuntimeError) as e:

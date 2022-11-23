@@ -21,7 +21,10 @@ from ros_compatibility.node import CompatibleNode
 from carla_ackermann_control import carla_control_physics as phys
 
 from ackermann_msgs.msg import AckermannDrive  # pylint: disable=import-error,wrong-import-order
+from demo_msgs.msg import CL_VehicleCommand
 from std_msgs.msg import Header # pylint: disable=wrong-import-order
+from sensor_msgs.msg import Imu
+
 from carla_msgs.msg import CarlaEgoVehicleStatus  # pylint: disable=no-name-in-module,import-error
 from carla_msgs.msg import CarlaEgoVehicleControl  # pylint: disable=no-name-in-module,import-error
 from carla_msgs.msg import CarlaEgoVehicleInfo  # pylint: disable=no-name-in-module,import-error
@@ -126,10 +129,11 @@ class CarlaAckermannControl(CompatibleNode):
 
         # ackermann drive commands
         self.control_subscriber = self.new_subscription(
-            AckermannDrive,
+            # AckermannDrive,
+            CL_VehicleCommand,
             "/carla/" + self.role_name + "/ackermann_cmd",
             self.ackermann_command_updated,
-            qos_profile=10
+            qos_profile=100
         )
 
         # current status of the vehicle
@@ -137,7 +141,7 @@ class CarlaAckermannControl(CompatibleNode):
             CarlaEgoVehicleStatus,
             "/carla/" + self.role_name + "/vehicle_status",
             self.vehicle_status_updated,
-            qos_profile=10
+            qos_profile=100
         )
 
         # vehicle info
@@ -145,8 +149,17 @@ class CarlaAckermannControl(CompatibleNode):
             CarlaEgoVehicleInfo,
             "/carla/" + self.role_name + "/vehicle_info",
             self.vehicle_info_updated,
-            qos_profile=10
+            qos_profile=100
         )
+
+        # vehicle Imu
+        self.vehicle_info_subscriber = self.new_subscription(
+            Imu,
+            "/carla/" + self.role_name + "/imu",
+            self.vehicle_imu_updated,
+            qos_profile=100
+        )
+
 
         # to send command to carla
         self.carla_control_publisher = self.new_publisher(
@@ -292,12 +305,23 @@ class CarlaAckermannControl(CompatibleNode):
         :type ros_ackermann_drive: ackermann_msgs.AckermannDrive
         :return:
         """
+        
         self.last_ackermann_msg_received_sec = self.get_time()
-        # set target values
-        self.set_target_steering_angle(ros_ackermann_drive.steering_angle)
-        self.set_target_speed(ros_ackermann_drive.speed)
-        self.set_target_accel(ros_ackermann_drive.acceleration)
-        self.set_target_jerk(ros_ackermann_drive.jerk)
+        # # set target values
+        # self.set_target_steering_angle(ros_ackermann_drive.steering_angle)
+        # # self.set_target_speed(ros_ackermann_drive.speed)
+        # self.set_target_speed(self.info.current.speed + (ros_ackermann_drive.acceleration*3.6))
+        # self.set_target_accel(ros_ackermann_drive.acceleration)
+        # self.set_target_jerk(ros_ackermann_drive.jerk)
+
+        self.set_target_steering_angle(ros_ackermann_drive.CL_phiTargetStrAngle)
+        # self.set_target_speed(ros_ackermann_drive.speed)
+        self.set_target_speed(self.info.current.speed + (ros_ackermann_drive.CL_aTargetLongAcc*3.6))
+        self.set_target_accel(ros_ackermann_drive.CL_aTargetLongAcc)
+        self.set_target_jerk(0.0)
+        
+
+        # print("updated", ros_ackermann_drive.CL_aTargetLongAcc, 'target_accel == ',self.info.target.accel)
 
     def set_target_steering_angle(self, target_steering_angle):
         """
@@ -348,9 +372,13 @@ class CarlaAckermannControl(CompatibleNode):
         # perform actual control
         self.control_steering()
         self.control_stop_and_reverse()
-        self.run_speed_control_loop()
+        
+        # self.run_speed_control_loop()
+        self.info.status.speed_control_accel_target = abs(self.info.target.accel)
+
         self.run_accel_control_loop()
         if not self.info.output.hand_brake:
+            # print('update_drive_vehicle_control_command')
             self.update_drive_vehicle_control_command()
 
             # only send out the Carla Control Command if AckermannDrive messages are
@@ -359,6 +387,7 @@ class CarlaAckermannControl(CompatibleNode):
                     self.get_time():
                 self.info.output.header = self.get_msg_header()
                 self.carla_control_publisher.publish(self.info.output)
+                # print(self.info.status)
 
     def control_steering(self):
         """
@@ -442,7 +471,7 @@ class CarlaAckermannControl(CompatibleNode):
                 self.info.status.speed_control_activation_count -= 1
         # set the auto_mode of the controller accordingly
         self.speed_controller.auto_mode = self.info.status.speed_control_activation_count >= 5
-
+        
         if self.speed_controller.auto_mode:
             self.speed_controller.setpoint = self.info.target.speed_abs
             self.info.status.speed_control_accel_delta = float(self.speed_controller(
@@ -478,6 +507,8 @@ class CarlaAckermannControl(CompatibleNode):
             self.info.status.accel_control_pedal_target +
             self.info.status.accel_control_pedal_delta,
             -self.info.restrictions.max_pedal, self.info.restrictions.max_pedal)
+
+        self.all_pid_accer.append(self.accel_controller.setpoint )
 
     def update_drive_vehicle_control_command(self):
         """
@@ -551,14 +582,53 @@ class CarlaAckermannControl(CompatibleNode):
         current_time_sec = self.get_time()
         delta_time = current_time_sec - self.info.current.time_sec
         current_speed = self.vehicle_status.velocity
-        if delta_time > 0:
-            delta_speed = current_speed - self.info.current.speed
-            current_accel = delta_speed / delta_time
-            # average filter
-            self.info.current.accel = (self.info.current.accel * 4 + current_accel) / 5
+        # if delta_time > 0:
+        #     delta_speed = current_speed - self.info.current.speed
+        #     current_accel = delta_speed / delta_time
+        #     # average filter
+        #     self.info.current.accel = (self.info.current.accel * 4 + current_accel) / 5
+        #     print( ' self.info.current.accel ', self.info.current.accel )
         self.info.current.time_sec = current_time_sec
         self.info.current.speed = current_speed
         self.info.current.speed_abs = abs(current_speed)
+    
+    
+    history = []
+    all_imu_accer = []
+    all_pid_accer = []
+    start_time = 0
+
+    def vehicle_imu_updated(self, msg):
+        import numpy as np
+        import time
+
+        if not isinstance(msg, Imu):
+            return
+
+        accl = numpy.clip(msg.linear_acceleration.x, -100, 100)
+
+        self.all_imu_accer.append(accl)
+        if self.start_time == 0:
+            self.start_time = time.time()
+            self.history.append(accl)
+        else:
+            time_delta = time.time() - self.start_time
+            # print(time_delta)
+            if time_delta > 1:
+                aver = np.average(self.history)
+
+                self.history = []
+                self.start_time = time.time()
+                self.info.current.accel = aver
+                # print( "linear_acceleration: aver %s" % aver)
+            else:
+                self.history.append(accl)
+                # print( "linear_acceleration: accl %s" % accl)
+
+        plot_pid_imureal(self.all_pid_accer, self.all_imu_accer)
+        if len(self.all_pid_accer) >= 10 * 1/ self.control_loop_rate :
+            self.all_pid_accer = []
+            self.all_imu_accer = []
 
     def run(self):
         """
@@ -567,15 +637,37 @@ class CarlaAckermannControl(CompatibleNode):
 
         :return:
         """
+        import time
+        start = time.time()
+        
 
         def loop(timer_event=None):
+            
             self.update_current_values()
             self.vehicle_control_cycle()
             self.send_ego_vehicle_control_info_msg()
+            
+            # print('control_loop_rate', time.time() - start, timer_event)
 
+            # global count
+            # count += 1
+            # print(count)
+
+       
         self.new_timer(self.control_loop_rate, loop)
         self.spin()
 
+def plot_pid_imureal(pid_val, real_val):
+    # print('len pid_val=', len( pid_val), 'len real_val',  len(real_val), len(pid_val) - len(real_val))
+    import matplotlib.pyplot as plt
+    plt.ion()  
+    plt.plot(pid_val)
+    plt.plot(real_val)
+    plt.show()
+    plt.pause(0.02)
+    plt.clf()  #清除图像
+
+count = 0
 
 def main(args=None):
     """

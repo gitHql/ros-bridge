@@ -59,28 +59,28 @@ class EgoVehicle(Vehicle):
         self.vehicle_info_published = False
         self.vehicle_control_override = False
         self._vehicle_control_applied_callback = vehicle_control_applied_callback
-
+        
         self.vehicle_status_publisher = node.new_publisher(
             CarlaEgoVehicleStatus,
             self.get_topic_prefix() + "/vehicle_status",
-            qos_profile=10)
+            qos_profile=100)
         self.vehicle_info_publisher = node.new_publisher(
             CarlaEgoVehicleInfo,
             self.get_topic_prefix() +
             "/vehicle_info",
-            qos_profile=QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+            qos_profile=QoSProfile(depth=100, durability=DurabilityPolicy.TRANSIENT_LOCAL))
 
         self.control_subscriber = node.new_subscription(
             CarlaEgoVehicleControl,
             self.get_topic_prefix() + "/vehicle_control_cmd",
             lambda data: self.control_command_updated(data, manual_override=False),
-            qos_profile=10)
+            qos_profile=100)
 
         self.manual_control_subscriber = node.new_subscription(
             CarlaEgoVehicleControl,
             self.get_topic_prefix() + "/vehicle_control_cmd_manual",
             lambda data: self.control_command_updated(data, manual_override=True),
-            qos_profile=10)
+            qos_profile=100)
 
         self.control_override_subscriber = node.new_subscription(
             Bool,
@@ -92,7 +92,7 @@ class EgoVehicle(Vehicle):
             Bool,
             self.get_topic_prefix() + "/enable_autopilot",
             self.enable_autopilot_updated,
-            qos_profile=10)
+            qos_profile=100)
 
     def get_marker_color(self):
         """

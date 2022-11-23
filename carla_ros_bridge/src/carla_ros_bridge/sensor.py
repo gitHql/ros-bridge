@@ -178,6 +178,9 @@ class Sensor(Actor):
                 self.next_data_expected_time = carla_sensor_data.timestamp + \
                     float(self.sensor_tick_time)
             self.queue.put(carla_sensor_data)
+
+            # print('update', 'sensor_tick_time',  self.sensor_tick_time,  end=' ')
+            # print('data', carla_sensor_data)
         else:
             self.publish_tf(trans.carla_transform_to_ros_pose(
                 carla_sensor_data.transform), carla_sensor_data.timestamp)
@@ -219,6 +222,7 @@ class Sensor(Actor):
                 return
 
     def _update_synchronous_sensor(self, frame, timestamp):
+       
         while not self.next_data_expected_time or \
             (not self.queue.empty() or
              self.next_data_expected_time and
@@ -246,10 +250,13 @@ class Sensor(Actor):
                     return
 
     def update(self, frame, timestamp):
+        
         if self.synchronous_mode:
             if self.is_event_sensor:
+                # print('event', timestamp)
                 self._update_synchronous_event_sensor(frame, timestamp)
             else:
+                
                 self._update_synchronous_sensor(frame, timestamp)
 
         super(Sensor, self).update(frame, timestamp)
