@@ -325,7 +325,7 @@ class HUD(object):
             CarlaEgoVehicleInfo,
             "/carla/{}/vehicle_info".format(self.role_name),
             self.vehicle_info_updated, 
-            qos_profile=QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+            qos_profile=QoSProfile(depth=100, durability=DurabilityPolicy.TRANSIENT_LOCAL))
 
         self.x, self.y, self.z = 0, 0, 0
         self.yaw = 0
@@ -456,6 +456,7 @@ class HUD(object):
                 0: 'N'
             }.get(self.vehicle_status.control.gear, self.vehicle_status.control.gear), ''
         ]
+
         self._info_text += [('Manual ctrl:', self.manual_control)]
         if self.carla_status.synchronous_mode:
             self._info_text += [('Sync mode running:', self.carla_status.synchronous_mode_running)]
@@ -616,6 +617,8 @@ def main(args=None):
 
     # resolution should be similar to spawned camera with role-name 'view'
     resolution = {"width": 800, "height": 600}
+
+    # resolution = {"width": 512, "height": 288}
 
     pygame.init()
     pygame.font.init()

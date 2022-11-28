@@ -70,6 +70,8 @@ class CarlaRosBridge(CompatibleNode):
         self.parameters = params
         self.carla_world = carla_world
 
+        self.mark_init()
+
         self.ros_timestamp = roscomp.ros_timestamp()
         self.callback_group = roscomp.callback_groups.ReentrantCallbackGroup()
 
@@ -127,7 +129,7 @@ class CarlaRosBridge(CompatibleNode):
         self._expected_ego_vehicle_control_command_ids = []
         self._expected_ego_vehicle_control_command_ids_lock = Lock()
 
-        if self.sync_mode:
+        if self.sync_mode:  #sync with control
             self.carla_run_state = CarlaControl.PLAY
 
             self.carla_control_subscriber = \
@@ -160,6 +162,57 @@ class CarlaRosBridge(CompatibleNode):
             self.new_subscription(CarlaWeatherParameters, "/carla/weather_control",
                                   self.on_weather_changed, qos_profile=10, callback_group=self.callback_group)
 
+       
+
+    def mark_init(self):
+        import pygame
+       
+        self._server_clock = pygame.time.Clock()
+        self.carla_camera_setting()
+
+    def carla_camera_setting(self):
+        from carla import ColorConverter as cc
+        self.sensors = [
+            ['sensor.camera.rgb', cc.Raw, 'Camera RGB', {}],
+            ['sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)', {}],
+            ['sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)', {}],
+            ['sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)', {}],
+            ['sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)', {}],
+            ['sensor.camera.semantic_segmentation', cc.CityScapesPalette, 'Camera Semantic Segmentation (CityScapes Palette)', {}],
+            ['sensor.camera.instance_segmentation', cc.CityScapesPalette, 'Camera Instance Segmentation (CityScapes Palette)', {}],
+            ['sensor.camera.instance_segmentation', cc.Raw, 'Camera Instance Segmentation (Raw)', {}],
+            ['sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)', {'range': '50'}],
+            ['sensor.camera.dvs', cc.Raw, 'Dynamic Vision Sensor', {}],
+            ['sensor.camera.rgb', cc.Raw, 'Camera RGB Distorted',
+                {'lens_circle_multiplier': '3.0',
+                'lens_circle_falloff': '3.0',
+                'chromatic_aberration_intensity': '0.5',
+                'chromatic_aberration_offset': '0'}],
+            ['sensor.camera.optical_flow', cc.Raw, 'Optical Flow', {}],
+        ]
+
+        world = self.carla_world
+        bp_library = world.get_blueprint_library()
+        dim = [800, 600]
+        for item in self.sensors:
+            bp = bp_library.find(item[0])
+            if item[0].startswith('sensor.camera'):
+                bp.set_attribute('image_size_x', str(dim[0]))
+                bp.set_attribute('image_size_y', str(dim[1]))
+                print('attribute of blueprint', bp.get_attribute('image_size_x'), bp.get_attribute('image_size_y') )
+                if bp.has_attribute('gamma'):
+                    bp.set_attribute('gamma', str(2.2))
+                for attr_name, attr_value in item[3].items():
+                    bp.set_attribute(attr_name, attr_value)
+            elif item[0].startswith('sensor.lidar'):
+                self.lidar_range = 50
+
+                for attr_name, attr_value in item[3].items():
+                    bp.set_attribute(attr_name, attr_value)
+                    if attr_name == 'range':
+                        self.lidar_range = float(attr_value)
+
+            item.append(bp)
     def spawn_object(self, req, response=None):
         response = roscomp.get_service_response(SpawnObject)
         if not self.shutdown.is_set():
@@ -247,6 +300,7 @@ class CarlaRosBridge(CompatibleNode):
                 return
 
     def _synchronous_mode_update(self):
+        print('_synchronous_mode_update')
         """
         execution loop for synchronous mode
         """
@@ -304,6 +358,10 @@ class CarlaRosBridge(CompatibleNode):
                 self.status_publisher.set_frame(carla_snapshot.frame)
                 self._update(carla_snapshot.frame,
                              carla_snapshot.timestamp.elapsed_seconds)
+
+
+        self._server_clock.tick()
+        # print('server_fps', self._server_clock.get_fps())
 
     def _update(self, frame_id, timestamp):
         """

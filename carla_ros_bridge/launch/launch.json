@@ -1,0 +1,18 @@
+{
+    "configurations": [
+        {
+            "name": "ROS: Attach",
+            "type": "ros",
+            "request": "attach"
+            "target": "/home/mark/carla-ros-bridge/catkin_ws/src/ros-bridgecarla_ros_bridge/launch/carla_ros_bridge_with_example_ego_vehicle.launch"
+        },
+        {
+            "name": "ROS: Attach to Python",
+            "type": "ros",
+            "request": "attach",
+            "runtime": "Python"
+
+            "target": "/home/mark/carla-ros-bridge/catkin_ws/src/ros-bridgecarla_ros_bridge/launch/carla_ros_bridge_with_example_ego_vehicle.launch"
+        }
+    ]
+}

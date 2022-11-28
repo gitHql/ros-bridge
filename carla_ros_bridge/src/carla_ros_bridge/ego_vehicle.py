@@ -63,7 +63,7 @@ class EgoVehicle(Vehicle):
         self.vehicle_status_publisher = node.new_publisher(
             CarlaEgoVehicleStatus,
             self.get_topic_prefix() + "/vehicle_status",
-            qos_profile=100)
+            qos_profile=10)
         self.vehicle_info_publisher = node.new_publisher(
             CarlaEgoVehicleInfo,
             self.get_topic_prefix() +
@@ -74,13 +74,13 @@ class EgoVehicle(Vehicle):
             CarlaEgoVehicleControl,
             self.get_topic_prefix() + "/vehicle_control_cmd",
             lambda data: self.control_command_updated(data, manual_override=False),
-            qos_profile=100)
+            qos_profile=10)
 
         self.manual_control_subscriber = node.new_subscription(
             CarlaEgoVehicleControl,
             self.get_topic_prefix() + "/vehicle_control_cmd_manual",
             lambda data: self.control_command_updated(data, manual_override=True),
-            qos_profile=100)
+            qos_profile=10)
 
         self.control_override_subscriber = node.new_subscription(
             Bool,
@@ -92,7 +92,7 @@ class EgoVehicle(Vehicle):
             Bool,
             self.get_topic_prefix() + "/enable_autopilot",
             self.enable_autopilot_updated,
-            qos_profile=100)
+            qos_profile=10)
 
     def get_marker_color(self):
         """
@@ -236,6 +236,7 @@ class EgoVehicle(Vehicle):
             vehicle_control.reverse = ros_vehicle_control.reverse
             vehicle_control.manual_gear_shift = ros_vehicle_control.manual_gear_shift
             vehicle_control.gear = ros_vehicle_control.gear
+
             self.carla_actor.apply_control(vehicle_control)
             self._vehicle_control_applied_callback(self.get_id())
 
