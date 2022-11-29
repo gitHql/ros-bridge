@@ -42,7 +42,7 @@ class ImuSensor(Sensor):
         :type synchronous_mode: bool
         """
 
-        print('carla_actor.attr', carla_actor.attributes)
+        # print('carla_actor.attr', carla_actor.attributes)
         super(ImuSensor, self).__init__(uid=uid,
                                         name=name,
                                         parent=parent,
@@ -50,7 +50,7 @@ class ImuSensor(Sensor):
                                         node=node,
                                         carla_actor=carla_actor,
                                         synchronous_mode=synchronous_mode)
-        print('==============================================================sensor_tick_time', self.sensor_tick_time)
+        # print('==============================================================sensor_tick_time', self.sensor_tick_time)
         self.imu_publisher = node.new_publisher(Imu, self.get_topic_prefix(), qos_profile=10)
         self.listen()
 
