@@ -9,7 +9,7 @@ speed_Kd: 0.50
 # accel_Ki: 0.00
 # accel_Kd: 0.05
 
-accel_Kp: 0.2
+accel_Kp: 0.1
 accel_Ki: 0.00
 accel_Kd: 0.5
 
@@ -18,4 +18,4 @@ accel_Kd: 0.5
 # at more or less constant speed.
 # If the absolute value of the ackermann drive target acceleration exceeds this value,
 # directly the input acceleration is controlled
-min_accel: 1.0
+min_accel: 0.1

@@ -235,7 +235,7 @@ def get_vehicle_max_acceleration(_):
     :return: maximum acceleration [m/s^2 > 0]
     :rtype: float64
     """
-    max_acceleration = 3.0
+    max_acceleration = 3.5
 
     return max_acceleration
 
@@ -251,6 +251,6 @@ def get_vehicle_max_deceleration(_):
     :return: maximum deceleration [m/s^2 > 0]
     :rtype: float64
     """
-    max_deceleration = 8.0
+    max_deceleration = 10.0
 
     return max_deceleration
