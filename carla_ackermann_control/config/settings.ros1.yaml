@@ -9,9 +9,9 @@ speed_Kd: 0.50
 # accel_Ki: 0.00
 # accel_Kd: 0.05
 
-accel_Kp: 0.1
+accel_Kp: 0.05
 accel_Ki: 0.00
-accel_Kd: 0.5
+accel_Kd: 0.00
 
 # set the minimum acceleration in (m/s^2)
 # This border value is used to enable the speed controller which is used to control driving

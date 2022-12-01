@@ -162,7 +162,7 @@ class CarlaSpawnObjects(CompatibleNode):
                             vehicle["spawn_point"]["pitch"],
                             vehicle["spawn_point"]["yaw"]
                         )
-                        self.loginfo("Spawn point from configuration file")
+                        self.loginfo("Spawn point from configuration file", spawn_point)
                     except KeyError as e:
                         self.logerr("{}: Could not use the spawn point from config file, ".format(vehicle["id"]) +
                                     "the mandatory attribute {} is missing, a random spawn point will be used".format(e))

@@ -26,7 +26,6 @@
             "id": "ego_vehicle",
             "sensors": 
             [
-               
                 {
                     "type": "sensor.camera.rgb",
                     "id": "rgb_view",

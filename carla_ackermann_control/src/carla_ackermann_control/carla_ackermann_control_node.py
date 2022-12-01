@@ -514,7 +514,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.status.accel_control_pedal_delta = float(self.accel_controller(
             self.info.current.accel))  
         
-        # self.info.status.accel_control_pedal_delta  = numpy.clip(self.info.status.accel_control_pedal_delta , -0.2, 0.02)
+        self.info.status.accel_control_pedal_delta  = numpy.clip(self.info.status.accel_control_pedal_delta , -0.1, 0.1)
         
         # @todo: we might want to scale by making use of the the abs-jerk value
         # If the jerk input is big, then the trajectory input expects already quick changes
@@ -566,6 +566,7 @@ class CarlaAckermannControl(CompatibleNode):
                  self.info.status.accel_control_pedal_target) /
                 abs(self.info.restrictions.max_pedal))
             self.info.output.throttle = 0.0
+            self.info.output.brake = 0.0
 
         # finally clip the final control output (should actually never happen)
         self.info.output.brake = numpy.clip(
@@ -619,8 +620,25 @@ class CarlaAckermannControl(CompatibleNode):
         if not isinstance(msg, Imu):
             return
 
-        accel = numpy.clip(msg.linear_acceleration.x, -100, 100)
-        accel = (self.info.current.accel * 8 + accel) / 10
+        import math
+        from transforms3d.euler import quat2euler
+        quat = numpy.empty((4, ))
+        quat[0] = msg.orientation.w 
+        quat[1] = msg.orientation.x
+        quat[2] = msg.orientation.y
+        quat[3] =  msg.orientation.z
+
+
+        ax, ay, az = quat2euler(quat)
+        cord = msg.linear_acceleration
+        theta_x = abs(ax) #abs(msg.orientation.x)
+        delta_x = cord.x - 0
+        delta_y = cord.y - 0
+        delta_z = cord.z - 9.81
+        world_x = delta_x  * math.cos(theta_x) + delta_y * math.sin(theta_x) + delta_z * math.sin(theta_x)
+        accel = numpy.clip(world_x, -100, 100)
+        # accel = numpy.clip(cord.x, -100, 100)
+        # accel = (self.info.current.accel * 8 + accel) / 10
         self.info.current.accel = accel
         self.all_imu_accer.append(accel)
 
