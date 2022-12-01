@@ -174,6 +174,11 @@ class CarlaAckermannControl(CompatibleNode):
             "/carla/" + self.role_name + "/ackermann_control/control_info",
             qos_profile=1)
 
+        self.all_imu_accer = []
+        self.all_pid_accer = []
+        self.pedal_history = []
+        self.throttle_lower_borders = []
+
     if ROS_VERSION == 1:
 
         def reconfigure_pid_parameters(self, ego_vehicle_control_parameter, _level):
@@ -248,6 +253,62 @@ class CarlaAckermannControl(CompatibleNode):
             )
 
             return SetParametersResult(successful=True)
+        
+    def vehicle_imu_updated(self, msg):
+        if not isinstance(msg, Imu):
+            return
+
+        import math
+        from transforms3d.euler import quat2euler
+        quat = numpy.empty((4, ))
+        quat[0] = msg.orientation.w 
+        quat[1] = msg.orientation.x
+        quat[2] = msg.orientation.y
+        quat[3] =  msg.orientation.z
+
+
+        ax, ay, az = quat2euler(quat)
+        cord = msg.linear_acceleration
+        theta_x = abs(ax) #abs(msg.orientation.x)
+        delta_x = cord.x - 0
+        delta_y = cord.y - 0
+        delta_z = cord.z - 9.81
+        world_x = delta_x  * math.cos(theta_x) + delta_y * math.sin(theta_x) + delta_z * math.sin(theta_x)
+
+        #imu converted value
+        accel = numpy.clip(world_x, -100, 100)
+
+
+        #imu direct value
+        accel = numpy.clip(cord.x, -100, 100)
+
+        #filter
+        # accel = (self.info.current.accel * 8 + accel) / 10
+        
+        self.info.current.accel = accel
+        self.all_imu_accer.append(accel)
+
+        self.make_plt()
+
+    def make_plt(self):
+        import matplotlib.pyplot as plt
+        _, = plt.plot([], label='accel_control_pedal_target.{}'.format(round(self.info.status.accel_control_pedal_target, 3)))
+        _ , = plt.plot([], label= 'throttle_lower_border={}'.format(round(self.info.status.throttle_lower_border, 3)))
+        _ , = plt.plot([], label='brake_upper_border={}'.format(round(self.info.status.brake_upper_border, 3)))
+
+        _ , = plt.plot([], label='setpoint={}'.format(round(self.accel_controller.setpoint , 3)))
+        _ , = plt.plot([], label=' current.accel={}'.format(round(self.info.current.accel, 3)))
+        _ , = plt.plot([], label='accel_control_pedal_delta={}'.format(round(self.info.status.accel_control_pedal_delta, 3)))
+
+        _ , = plt.plot([], label='max_pedel={}'.format(round(self.info.restrictions.max_pedal, 3)))
+        _, = plt.plot([], label='status={}'.format(self.info.status.status))
+        from loop_plt import plot_pid_imureal
+        
+        plot_pid_imureal(self.pedal_history, self.all_pid_accer, self.all_imu_accer, self.throttle_lower_borders)
+
+        imu_hz = 35
+        if len(self.all_pid_accer) >= 20 * imu_hz: # 1/self.control_loop_rate :
+            self.clean_plot()
 
     def get_msg_header(self):
         """
@@ -271,6 +332,7 @@ class CarlaAckermannControl(CompatibleNode):
 
         # set target values
         self.vehicle_status = vehicle_status
+
 
     def vehicle_info_updated(self, vehicle_info):
         """
@@ -328,8 +390,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.vehicle_control_cycle()
         self.send_ego_vehicle_control_info_msg()
         
-        if len(self.all_pid_accer) >= 10 * 1/ self.control_loop_rate :
-            self.clean_plot()
+       
     def clean_plot(self):
         self.all_pid_accer = []
         self.all_imu_accer = []
@@ -387,7 +448,6 @@ class CarlaAckermannControl(CompatibleNode):
         self.control_stop_and_reverse()
         
         # self.run_speed_control_loop()
-        self.info.status.speed_control_accel_target = self.info.target.accel
 
         self.run_accel_control_loop()
         if not self.info.output.hand_brake:
@@ -396,8 +456,7 @@ class CarlaAckermannControl(CompatibleNode):
 
             # only send out the Carla Control Command if AckermannDrive messages are
             # received in the last second (e.g. to allows manually controlling the vehicle)
-            if (self.last_ackermann_msg_received_sec + 1.0) > \
-                    self.get_time():
+            if True or (self.last_ackermann_msg_received_sec + 1.0) >  self.get_time():
                 self.info.output.header = self.get_msg_header()
                 self.carla_control_publisher.publish(self.info.output)
                 # print(self.info.status)
@@ -510,15 +569,17 @@ class CarlaAckermannControl(CompatibleNode):
         Run the PID control loop for the acceleration
         """
         # setpoint of the acceleration controller is the output of the speed controller
-        self.accel_controller.setpoint = self.info.status.speed_control_accel_target
+        # self.accel_controller.setpoint = self.info.status.speed_control_accel_target
+        self.accel_controller.setpoint = self.info.target.accel
         self.info.status.accel_control_pedal_delta = float(self.accel_controller(
             self.info.current.accel))  
         
-        self.info.status.accel_control_pedal_delta  = numpy.clip(self.info.status.accel_control_pedal_delta , -0.1, 0.1)
+        # self.info.status.accel_control_pedal_delta  = numpy.clip(self.info.status.accel_control_pedal_delta , -0.5, 0.5)
         
         # @todo: we might want to scale by making use of the the abs-jerk value
         # If the jerk input is big, then the trajectory input expects already quick changes
         # in the acceleration; to respect this we put an additional proportional factor on top
+       
         self.info.status.accel_control_pedal_target = numpy.clip(
             self.info.status.accel_control_pedal_target +
             self.info.status.accel_control_pedal_delta,
@@ -611,40 +672,6 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.current.speed_abs = abs(current_speed)
     
     
-    all_imu_accer = []
-    all_pid_accer = []
-    pedal_history = []
-    throttle_lower_borders = []
-
-    def vehicle_imu_updated(self, msg):
-        if not isinstance(msg, Imu):
-            return
-
-        import math
-        from transforms3d.euler import quat2euler
-        quat = numpy.empty((4, ))
-        quat[0] = msg.orientation.w 
-        quat[1] = msg.orientation.x
-        quat[2] = msg.orientation.y
-        quat[3] =  msg.orientation.z
-
-
-        ax, ay, az = quat2euler(quat)
-        cord = msg.linear_acceleration
-        theta_x = abs(ax) #abs(msg.orientation.x)
-        delta_x = cord.x - 0
-        delta_y = cord.y - 0
-        delta_z = cord.z - 9.81
-        world_x = delta_x  * math.cos(theta_x) + delta_y * math.sin(theta_x) + delta_z * math.sin(theta_x)
-        accel = numpy.clip(world_x, -100, 100)
-        # accel = numpy.clip(cord.x, -100, 100)
-        # accel = (self.info.current.accel * 8 + accel) / 10
-        self.info.current.accel = accel
-        self.all_imu_accer.append(accel)
-
-        from loop_plt import plot_pid_imureal
-        plot_pid_imureal(self.pedal_history, self.all_pid_accer, self.all_imu_accer, self.throttle_lower_borders)
-
     def run(self):
         """
         Control loop
@@ -657,10 +684,6 @@ class CarlaAckermannControl(CompatibleNode):
 
         self.new_timer(self.control_loop_rate, loop)
         self.spin()
-
-
-
-
 
 def main(args=None):
     roscomp.init("carla_ackermann_control", args=args)

@@ -43,7 +43,7 @@ def get_engine_brake_force(_):
     :return: engine braking force [N]
     :rtype: float64
     """
-    return 500.0
+    return 400.0
 
 
 def get_vehicle_mass(vehicle_info):
@@ -149,7 +149,7 @@ def get_acceleration_of_gravity(_):
 
     return acceleration
 
-
+#空气阻力，由速度决定，其他是调整参数
 def get_aerodynamic_drag_force(vehicle_status):
     """
     Calculate the aerodynamic drag force of a carla vehicle
@@ -235,8 +235,8 @@ def get_vehicle_max_acceleration(_):
     :return: maximum acceleration [m/s^2 > 0]
     :rtype: float64
     """
-    max_acceleration = 3.5
-
+    max_acceleration = 8
+    # max_acceleration = 8 #tesla
     return max_acceleration
 
 
