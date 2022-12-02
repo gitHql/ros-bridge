@@ -618,7 +618,7 @@ def main(args=None):
     # resolution should be similar to spawned camera with role-name 'view'
     resolution = {"width": 800, "height": 600}
 
-    # resolution = {"width": 512, "height": 288}
+    resolution = {"width": 256, "height": 144}
 
     pygame.init()
     pygame.font.init()

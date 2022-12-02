@@ -8,12 +8,11 @@ Classes to handle Carla imu sensor
 """
 
 from transforms3d.euler import euler2quat
-
 import carla_common.transforms as trans
-
 from carla_ros_bridge.sensor import Sensor
-
 from sensor_msgs.msg import Imu
+
+from demo_msgs.msg import CL_VehicleCommand
 
 
 class ImuSensor(Sensor):
@@ -52,13 +51,16 @@ class ImuSensor(Sensor):
                                         synchronous_mode=synchronous_mode)
         # print('==============================================================sensor_tick_time', self.sensor_tick_time)
         self.imu_publisher = node.new_publisher(Imu, self.get_topic_prefix(), qos_profile=10)
+        self.control_publisher = node.new_publisher(CL_VehicleCommand,  
+        "/carla/ego_vehicle/ackermann_cmd", 
+        qos_profile=100)
         self.listen()
 
     def destroy(self):
         super(ImuSensor, self).destroy()
         self.node.destroy_publisher(self.imu_publisher)
 
-    # pylint: disable=arguments-differ
+    # pylint: disable=arguments-differrospy.spin()
     count = 0
     def sensor_data_updated(self, carla_imu_measurement):
         
@@ -91,3 +93,36 @@ class ImuSensor(Sensor):
         imu_msg.orientation.z = quat[3]
 
         self.imu_publisher.publish(imu_msg)
+
+        self.publish_cl_control(-0.1 < imu_msg.orientation.x  -  self.target < 0.1)
+
+    target = 1
+    counting = 0
+    def publish_cl_control(self, reached_target=False):
+        
+        # if reached_target:
+        #     self.counting += 1
+        #     if self.counting > 10:
+        #         self.counting = 0
+        #         import random.random
+        #         self.target = random(0,3)
+
+        msg = CL_VehicleCommand()
+        msg.header.seq = 1 
+        # msg.stamp = 0
+        # msg.frame_id= 'ssss'
+        msg.CL_stSysSts= 1
+        msg.CL_flgAccelEnable= True
+        msg.CL_flgStrWhlEnable= False
+        msg.CL_nStrWhlSpeed= 0
+        msg.CL_flgGearEnable= False
+        msg.CL_flgLeftTurnLight= 1
+        msg.CL_flgRightTurnLight= 1
+        msg.CL_phiTargetStrAngle= 0.0
+
+        msg.CL_gearTargetGear= 1
+        msg.CL_aTargetLongAcc= self.target
+
+       
+
+        self.control_publisher.publish(msg)
