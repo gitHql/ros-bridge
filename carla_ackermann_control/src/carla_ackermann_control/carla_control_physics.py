@@ -235,7 +235,7 @@ def get_vehicle_max_acceleration(_):
     :return: maximum acceleration [m/s^2 > 0]
     :rtype: float64
     """
-    max_acceleration = 8
+    max_acceleration = 4
     # max_acceleration = 8 #tesla
     return max_acceleration
 

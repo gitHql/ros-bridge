@@ -283,7 +283,7 @@ class CarlaAckermannControl(CompatibleNode):
         accel = numpy.clip(cord.x, -100, 100)
 
         #filter
-        # accel = (self.info.current.accel * 8 + accel) / 10
+        accel = (self.info.current.accel * 8 + accel) / 10
         
         self.info.current.accel = accel
         self.all_imu_accer.append(accel)
