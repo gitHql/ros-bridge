@@ -280,13 +280,16 @@ class CarlaAckermannControl(CompatibleNode):
 
 
         #imu direct value
-        accel = numpy.clip(cord.x, -100, 100)
+        accel = numpy.clip(cord.x, -3, 3)
 
-        #filter
-        accel = (self.info.current.accel * 8 + accel) / 10
+        #filter  人的最快反应是20ms，假设控制频率200hz，则5次(200的50分之一)做一次平均滤波
+        accel = (self.info.current.accel * 4 + accel) / 5
         
         self.info.current.accel = accel
         self.all_imu_accer.append(accel)
+
+        '''moved from update_drive_vehicle_control_command'''
+        
 
         self.make_plt()
 
@@ -302,11 +305,12 @@ class CarlaAckermannControl(CompatibleNode):
 
         _ , = plt.plot([], label='max_pedel={}'.format(round(self.info.restrictions.max_pedal, 3)))
         _, = plt.plot([], label='status={}'.format(self.info.status.status))
+        _, = plt.plot([], label='throttle={}'.format(self.info.output.throttle))
         from loop_plt import plot_pid_imureal
         
         plot_pid_imureal(self.pedal_history, self.all_pid_accer, self.all_imu_accer, self.throttle_lower_borders)
 
-        imu_hz = 35
+        imu_hz = 200
         if len(self.all_pid_accer) >= 20 * imu_hz: # 1/self.control_loop_rate :
             self.clean_plot()
 
@@ -570,11 +574,13 @@ class CarlaAckermannControl(CompatibleNode):
         """
         # setpoint of the acceleration controller is the output of the speed controller
         # self.accel_controller.setpoint = self.info.status.speed_control_accel_target
-        self.accel_controller.setpoint = self.info.target.accel
+        self.accel_controller.setpoint =  self.info.target.accel 
+
         self.info.status.accel_control_pedal_delta = float(self.accel_controller(
             self.info.current.accel))  
-        
-        # self.info.status.accel_control_pedal_delta  = numpy.clip(self.info.status.accel_control_pedal_delta , -0.5, 0.5)
+            #/  self.accel_controller.setpoint   #除以目标值是为了调整为油门百分比
+
+        # self.info.status.accel_control_pedal_delta  = numpy.clip(self.info.status.accel_control_pedal_delta, -0.05, 0.05)
         
         # @todo: we might want to scale by making use of the the abs-jerk value
         # If the jerk input is big, then the trajectory input expects already quick changes
@@ -589,12 +595,12 @@ class CarlaAckermannControl(CompatibleNode):
         """
         Apply the current speed_control_target value to throttle/brake commands
         """
-
         # the driving impedance moves the 'zero' acceleration border
         # Interpretation: To reach a zero acceleration the throttle has to pushed
         # down for a certain amount
+        #mark: to keep speed current,must at leat use this throttle to get the accel
         self.info.status.throttle_lower_border = phys.get_vehicle_driving_impedance_acceleration(
-            self.vehicle_info, self.vehicle_status, self.info.output.reverse)
+        self.vehicle_info, self.vehicle_status, self.info.output.reverse) 
 
         # the engine lay off acceleration defines the size of the coasting area
         # Interpretation: The engine already prforms braking on its own;
@@ -603,6 +609,7 @@ class CarlaAckermannControl(CompatibleNode):
             phys.get_vehicle_lay_off_engine_acceleration(self.vehicle_info)
 
         if self.info.status.accel_control_pedal_target > self.info.status.throttle_lower_border:
+        # if self.info.current.accel < self.info.target.accel:
             self.info.status.status = "accelerating"
             self.info.output.brake = 0.0
             # the value has to be normed to max_pedal
@@ -614,7 +621,10 @@ class CarlaAckermannControl(CompatibleNode):
                 (self.info.status.accel_control_pedal_target -
                  self.info.status.throttle_lower_border) /
                 abs(self.info.restrictions.max_pedal))
+            self.info.output.throttle = numpy.clip(self.info.output.throttle, 0.1, 1)
+            assert(self.info.output.throttle > 0)
         elif self.info.status.accel_control_pedal_target > self.info.status.brake_upper_border:
+            print( self.info.status.accel_control_pedal_target , self.info.status.brake_upper_border)
             self.info.status.status = "coasting"
             # no control required
             self.info.output.brake = 0.0
@@ -626,7 +636,7 @@ class CarlaAckermannControl(CompatibleNode):
                 (self.info.status.brake_upper_border -
                  self.info.status.accel_control_pedal_target) /
                 abs(self.info.restrictions.max_pedal))
-            self.info.output.throttle = 0.0
+            self.info.output.throttle = 1-self.info.output.brake
             self.info.output.brake = 0.0
 
         # finally clip the final control output (should actually never happen)

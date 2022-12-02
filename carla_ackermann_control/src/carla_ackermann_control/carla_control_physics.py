@@ -58,7 +58,6 @@ def get_vehicle_mass(vehicle_info):
     mass = 1500.0
     if vehicle_info.mass:
         mass = vehicle_info.mass
-
     return mass
 
 
@@ -112,7 +111,8 @@ def get_rolling_resistance_force(vehicle_info):
     # and between 0.0025 to 0.005 for bycicle tyres
     # see also https://en.wikipedia.org/wiki/Rolling_resistance
     # @todo: currently not within vehicle_info
-    rolling_resistance_coefficient = 0.01
+    # rolling_resistance_coefficient = 0.01
+    rolling_resistance_coefficient = 0.015
     normal_force = get_weight_force(vehicle_info)
 
     rolling_resistance_force = rolling_resistance_coefficient * normal_force
@@ -219,7 +219,7 @@ def get_vehicle_max_speed(_):
     :rtype: float64
     """
     # 180 km/h is the default max speed of a car
-    max_speed = 180.0 / 3.6
+    max_speed = 200.0 / 3.6
 
     return max_speed
 
@@ -234,8 +234,9 @@ def get_vehicle_max_acceleration(_):
     :type vehicle_info: carla_ros_bridge.CarlaEgoVehicleInfo
     :return: maximum acceleration [m/s^2 > 0]
     :rtype: float64
+    特斯拉参数200km/h的加速度时间为14.7s
     """
-    max_acceleration = 4
+    max_acceleration = get_vehicle_max_speed(_)/14.7
     # max_acceleration = 8 #tesla
     return max_acceleration
 

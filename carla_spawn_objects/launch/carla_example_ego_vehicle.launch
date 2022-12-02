@@ -6,7 +6,7 @@
     and parameter name spawn_point_<vehicle_name>. You can add
     as many spawn_point as vehicles defined in objects_definition_file-->
   <!-- <arg name="spawn_point_ego_vehicle" default='390.0,-87.0,0.3,0.0,0.0,90.0'/> -->
-  <arg name="spawn_point_ego_vehicle" default=''/>
+  <arg name="spawn_point_ego_vehicle" default='10,0,2,0,0,0'/>
   <arg name="spawn_sensors_only" default="false"/>
 
   <arg name="control_id" default="control"/>

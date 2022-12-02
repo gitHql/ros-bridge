@@ -63,6 +63,7 @@ class CarlaSpawnObjects(CompatibleNode):
         if response_id != -1:
             self.loginfo("Object (type='{}', id='{}') spawned successfully as {}.".format(
                 spawn_object_request.type, spawn_object_request.id, response_id))
+            # self.loginfo('=====================================================response is {}'.format(response))
         else:
             self.logwarn("Error while spawning object (type='{}', id='{}').".format(
                 spawn_object_request.type, spawn_object_request.id))
@@ -162,7 +163,9 @@ class CarlaSpawnObjects(CompatibleNode):
                             vehicle["spawn_point"]["pitch"],
                             vehicle["spawn_point"]["yaw"]
                         )
-                        self.loginfo("Spawn point from configuration file", spawn_point)
+
+                        #"spawn_point": {"x": 0.0, "y": 0.0, "z": 0.0, "roll": 0.0, "pitch": 0.0, "yaw": 0.0},
+                        self.loginfo("Spawn point from configuration file {}".format( spawn_point) )
                     except KeyError as e:
                         self.logerr("{}: Could not use the spawn point from config file, ".format(vehicle["id"]) +
                                     "the mandatory attribute {} is missing, a random spawn point will be used".format(e))
