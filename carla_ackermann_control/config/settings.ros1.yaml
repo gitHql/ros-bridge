@@ -10,7 +10,7 @@ speed_Kd: 0.50
 # accel_Kd: 0.05
 
 accel_Kp: 0.05
-accel_Ki: 0.00
+accel_Ki: 0.01
 accel_Kd: 0.01
 
 # set the minimum acceleration in (m/s^2)

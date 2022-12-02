@@ -32,7 +32,7 @@ def plot_pid_imureal(pedal_history, pid_val, real_val, throttle_lower_borders):
     # plt.yticks(my_y_ticks)
 
     plt.show()
-    plt.pause(0.001)
+    plt.pause(0.01)
     plt.clf()  #清除图像
 
 count = 0

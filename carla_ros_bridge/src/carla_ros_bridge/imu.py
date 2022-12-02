@@ -93,19 +93,21 @@ class ImuSensor(Sensor):
         imu_msg.orientation.z = quat[3]
 
         self.imu_publisher.publish(imu_msg)
-
-        self.publish_cl_control(-0.1 < imu_msg.orientation.x  -  self.target < 0.1)
+        print(round( imu_msg.linear_acceleration.x ), round( self.target, 3))
+        self.publish_cl_control(-0.1 < imu_msg.linear_acceleration.x  -  self.target < 0.1)
 
     target = 1
     counting = 0
     def publish_cl_control(self, reached_target=False):
-        
-        # if reached_target:
-        #     self.counting += 1
-        #     if self.counting > 10:
-        #         self.counting = 0
-        #         import random.random
-        #         self.target = random(0,3)
+        print('imu control')
+        if reached_target:
+            self.counting += 1
+            print('reached_target', self.target)
+            if self.counting > 10:
+                self.counting = 0
+                from random import uniform
+                self.target = uniform(0,3)
+                print('======================target changed to {}'.format(self.target))
 
         msg = CL_VehicleCommand()
         msg.header.seq = 1 

@@ -323,7 +323,7 @@ class CarlaRosBridge(CompatibleNode):
             self.actor_factory.update_available_objects()
             frame = self.carla_world.tick()
             self._server_clock.tick()
-            print('_synchronous_mode_update server_fps', self._server_clock.get_fps())
+            # print('_synchronous_mode_update server_fps', self._server_clock.get_fps())
 
             world_snapshot = self.carla_world.get_snapshot()
 

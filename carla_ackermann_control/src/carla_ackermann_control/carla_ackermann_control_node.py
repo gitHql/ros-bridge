@@ -322,8 +322,8 @@ class CarlaAckermannControl(CompatibleNode):
         plot_pid_imureal(self.pedal_history, self.all_pid_accer, self.all_imu_accer, self.throttle_lower_borders)
         
 
-        imu_hz = 40
-        if len(self.all_pid_accer) >= 20 * imu_hz: # 1/self.control_loop_rate :
+        imu_hz = 20
+        if len(self.all_pid_accer) >= 10 * imu_hz: # 1/self.control_loop_rate :
             self.clean_plot()
        
 
@@ -464,9 +464,10 @@ class CarlaAckermannControl(CompatibleNode):
         if self.last_time_is_cold and self.info.current.accel > 0.1:
             self.cold_counter += 1
 
-            if self.cold_counter > 10:
+            if self.cold_counter > 5:
                 self.cold_counter = 0
                 self.last_time_is_cold = False
+                print('reset cold start')
             self.reinit_accel_pid()
              
         self.run_accel_control_loop()
@@ -735,10 +736,11 @@ class CarlaAckermannControl(CompatibleNode):
         :return:
         """
 
-        def loop(timer_event=None):
-            pass
+        # def loop(timer_event=None):
+        #     print('ros spin loop')
+        #     pass
 
-        self.new_timer(self.control_loop_rate, loop)
+        # self.new_timer(self.control_loop_rate, loop)
         
         # import threading
         # threading.Thread(target= lambda : \
@@ -757,7 +759,7 @@ class CarlaAckermannControl(CompatibleNode):
         while(True):
             self.make_plt()
             import time
-            time.sleep(0.01)
+            time.sleep(0.1)
 
 def main(args=None):
     roscomp.init("carla_ackermann_control", args=args)
