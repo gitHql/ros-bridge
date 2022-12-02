@@ -9,13 +9,9 @@ speed_Kd: 0.50
 # accel_Ki: 0.00
 # accel_Kd: 0.05
 
-# accel_Kp: 5
-# accel_Ki: 3
-# accel_Kd: 3
-
-accel_Kp: 0.5
+accel_Kp: 0.05
 accel_Ki: 0.00
-accel_Kd: 0.0
+accel_Kd: 0.01
 
 # set the minimum acceleration in (m/s^2)
 # This border value is used to enable the speed controller which is used to control driving
@@ -25,3 +21,29 @@ accel_Kd: 0.0
 
 #disable speed control, so dosen't matter
 min_accel: 0.001
+
+
+
+
+
+#wrong ===========================================
+# override the default values of the pid speed controller
+# (only relevant for ackermann control mode)
+# speed_Kp: 0.05
+# speed_Ki: 0.00
+# speed_Kd: 0.50
+# # override the default values of the pid acceleration controller
+# # (only relevant for ackermann control mode)
+# # accel_Kp: 0.02
+# # accel_Ki: 0.00
+# # accel_Kd: 0.05
+
+# # accel_Kp: 5
+# # accel_Ki: 3
+# # accel_Kd: 3
+
+# accel_Kp: 0.5
+# accel_Ki: 0.00
+# accel_Kd: 0.0
+
+
