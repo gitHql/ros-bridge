@@ -10,8 +10,13 @@ speed_Kd: 0.50
 # accel_Kd: 0.05
 
 accel_Kp: 0.05
+#33hz
+#0.08 开始震荡
+#0.012 震荡开始在第一次波峰收敛
+
+
 accel_Ki: 0.01
-accel_Kd: 0.01
+accel_Kd: 0.00025 #Kp/200
 
 # set the minimum acceleration in (m/s^2)
 # This border value is used to enable the speed controller which is used to control driving

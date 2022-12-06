@@ -18,7 +18,7 @@ def plot_pid_imureal(pedal_history, pid_val, real_val, throttle_lower_borders):
     a , = plt.plot(low, label='pid_low')
 
     b, = plt.plot(real_val, label='real_acc')
-    c, = plt.plot(pedal_history, label = 'target pedal')
+    # c, = plt.plot(pedal_history, label = 'target pedal')
     d, = plt.plot(throttle_lower_borders, label = 'throttle_lower_borders')
 
     leg = plt.legend(loc='upper right', prop={'size': 6})

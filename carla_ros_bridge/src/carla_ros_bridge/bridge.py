@@ -300,11 +300,10 @@ class CarlaRosBridge(CompatibleNode):
                 return
     
     def _synchronous_mode_update(self):
-        print('=============================================================================_synchronous_mode_update')
         """
         execution loop for synchronous mode
         """
-        wait_for_carla_car_staedy = 2 * 200
+        wait_for_carla_car_stedy = 2 * 200
 
         while not self.shutdown.is_set() and roscomp.ok():
             self.process_run_state()
@@ -315,15 +314,13 @@ class CarlaRosBridge(CompatibleNode):
                 with self._expected_ego_vehicle_control_command_ids_lock:
                     
                     for actor_id, actor in self.actor_factory.actors.items():
-                        if isinstance(actor, EgoVehicle):
-                            
+                        if isinstance(actor, EgoVehicle):                
                             self._expected_ego_vehicle_control_command_ids.append(
                                 actor_id)
 
             self.actor_factory.update_available_objects()
             frame = self.carla_world.tick()
-            self._server_clock.tick()
-            # print('_synchronous_mode_update server_fps', self._server_clock.get_fps())
+           
 
             world_snapshot = self.carla_world.get_snapshot()
 
@@ -337,9 +334,16 @@ class CarlaRosBridge(CompatibleNode):
             if self.parameters['synchronous_mode_wait_for_vehicle_control_command']:
                 # wait for all ego vehicles to send a vehicle control command
                 if self._expected_ego_vehicle_control_command_ids:
-                    if (wait_for_carla_car_staedy > 0):
-                                wait_for_carla_car_staedy -= 1
+                     
+
+                    if (wait_for_carla_car_stedy > 0):
+                                wait_for_carla_car_stedy -= 1
+                                import pygame
+                                self._server_clock = pygame.time.Clock()
                     else:
+                        self._server_clock.tick()
+                        print('::::::::::::::::::::::::_synchronous_mode_update server_fps', round(self._server_clock.get_fps(), 3))
+
                         if not self._all_vehicle_control_commands_received.wait(CarlaRosBridge.VEHICLE_CONTROL_TIMEOUT):
                             self.logwarn("Timeout ({}s) while waiting for vehicle control commands. "
                                         "Missing command from actor ids {}".format(CarlaRosBridge.VEHICLE_CONTROL_TIMEOUT,
