@@ -96,7 +96,7 @@ class ImuSensor(Sensor):
         # print(round( imu_msg.linear_acceleration.x, 3 ), round( self.target, 3))
         self.publish_cl_control(-0.1 < imu_msg.linear_acceleration.x  -  self.target < 0.1)
 
-    target = 1
+    target = 3
     counting = 0
     def publish_cl_control(self, reached_target=False):
         if reached_target:
