@@ -9,13 +9,12 @@ speed_Kd: 0.50
 # accel_Ki: 0.00
 # accel_Kd: 0.05
 
-accel_Kp: 0.05  
+accel_Kp: 0.05
 #0.08能良好适应1m/s^2的首次目标，之后调整震荡较低
 #0.05能良好适应3m/s^s的首次目标，之后调整震荡较低
 
-
 accel_Ki: 0.00
-accel_Kd: 0.0 #Kp/200
+accel_Kd: 0.00 #Kp/200
 
 # set the minimum acceleration in (m/s^2)
 # This border value is used to enable the speed controller which is used to control driving

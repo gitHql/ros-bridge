@@ -79,6 +79,8 @@ class CarlaRosBridge(CompatibleNode):
         self.shutdown = Event()
 
         self.carla_settings = carla_world.get_settings()
+        self.carla_settings.tile_stream_distance = 20
+
         if not self.parameters["passive"]:
             # workaround: settings can only applied within non-sync mode
             if self.carla_settings.synchronous_mode:
@@ -137,6 +139,8 @@ class CarlaRosBridge(CompatibleNode):
                                       lambda control: self.carla_control_queue.put(control.command),
                                       qos_profile=10, callback_group=self.callback_group)
 
+            import pygame
+            self._server_clock = pygame.time.Clock()
             self.synchronous_mode_update_thread = Thread(
                 target=self._synchronous_mode_update)
             self.synchronous_mode_update_thread.start()
@@ -303,8 +307,6 @@ class CarlaRosBridge(CompatibleNode):
         """
         execution loop for synchronous mode
         """
-        wait_for_carla_car_stedy = 2 * 200
-
         while not self.shutdown.is_set() and roscomp.ok():
             self.process_run_state()
 
@@ -321,6 +323,8 @@ class CarlaRosBridge(CompatibleNode):
             self.actor_factory.update_available_objects()
             frame = self.carla_world.tick()
            
+            self._server_clock.tick()
+            print('::::::::::::::::::::::::_synchronous_mode_update server_fps', round(self._server_clock.get_fps(), 3))
 
             world_snapshot = self.carla_world.get_snapshot()
 
@@ -334,20 +338,10 @@ class CarlaRosBridge(CompatibleNode):
             if self.parameters['synchronous_mode_wait_for_vehicle_control_command']:
                 # wait for all ego vehicles to send a vehicle control command
                 if self._expected_ego_vehicle_control_command_ids:
-                     
-
-                    if (wait_for_carla_car_stedy > 0):
-                                wait_for_carla_car_stedy -= 1
-                                import pygame
-                                self._server_clock = pygame.time.Clock()
-                    else:
-                        self._server_clock.tick()
-                        print('::::::::::::::::::::::::_synchronous_mode_update server_fps', round(self._server_clock.get_fps(), 3))
-
-                        if not self._all_vehicle_control_commands_received.wait(CarlaRosBridge.VEHICLE_CONTROL_TIMEOUT):
-                            self.logwarn("Timeout ({}s) while waiting for vehicle control commands. "
-                                        "Missing command from actor ids {}".format(CarlaRosBridge.VEHICLE_CONTROL_TIMEOUT,
-                                                                                    self._expected_ego_vehicle_control_command_ids))
+                    if not self._all_vehicle_control_commands_received.wait(CarlaRosBridge.VEHICLE_CONTROL_TIMEOUT):
+                        self.logwarn("Timeout ({}s) while waiting for vehicle control commands. "
+                                    "Missing command from actor ids {}".format(CarlaRosBridge.VEHICLE_CONTROL_TIMEOUT,
+                                                                                self._expected_ego_vehicle_control_command_ids))
                     self._all_vehicle_control_commands_received.clear()
 
     def _carla_time_tick(self, carla_snapshot):

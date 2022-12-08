@@ -94,22 +94,59 @@ class ImuSensor(Sensor):
 
         self.imu_publisher.publish(imu_msg)
         # print(round( imu_msg.linear_acceleration.x, 3 ), round( self.target, 3))
-        self.publish_cl_control(-0.1 < imu_msg.linear_acceleration.x  -  self.target < 0.1)
 
-    target = 3
-    counting = 0
-    def publish_cl_control(self, reached_target=False):
+
+
+        reached_target = -0.1 < imu_msg.linear_acceleration.x  -  self.target < 0.1
+        near_zero = (-0.1 < imu_msg.linear_acceleration.x < 0.1)
+        from random import uniform
+
         if reached_target:
-            self.counting += 1
-            print('reached_target', self.target)
-            if self.counting > 120:
-                self.counting = 0
-                from random import uniform
-                self.target = uniform(0,2)
+            self.reached_counting += 1
+            
+            if self.reached_counting > 100:
+                self.reached_counting = 0
+                if self.target > 0:
+                    start, end = -self.PID_max, 0
+                else:
+                    start, end = 0, self.PID_max
+
+                # start, end = 0, self.PID_max  #屏蔽正负区间的翻转
+                self.target = round(uniform(start, end), 3)
                 print('======================target changed to {}'.format(self.target))
         else:
-            self.counting = 0
+            self.reached_counting = 0
+            
+            if self.target > 0 and   imu_msg.linear_acceleration.x < self.target:
+                self.max_accel_count += 1
+            else:
+                self.max_accel_count = 0
+            
+            if self.max_accel_count > 100:
+                self.max_accel_count = 0
+                print("max_speed reached but accel won't kee")
+                self.target =round(uniform(-self.PID_max, 0), 3)
 
+            if self.target < 0 and  imu_msg.linear_acceleration.x > self.target:
+                self.won_reach_negative_count += 1
+            else:
+                self.won_reach_negative_count = 0
+            if self.won_reach_negative_count > 100:
+                self.won_reach_negative_count = 0
+                print("already min accel but accel won't get there", self.target)
+                self.target =round(uniform(0,self.PID_max), 3)
+
+            else:
+                print('invalid logic', self.target, imu_msg.linear_acceleration.x)
+        self.publish_cl_control()
+
+    PID_max = 1
+    target = 1
+    reached_counting = 0
+    max_accel_count = 0
+    won_reach_negative_count = 0
+
+    def publish_cl_control(self):
         msg = CL_VehicleCommand()
         msg.header.seq = 1 
         # msg.stamp = 0
