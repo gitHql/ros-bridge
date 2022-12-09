@@ -19,6 +19,8 @@ from ros_compatibility.qos import QoSProfile, DurabilityPolicy
 
 from carla_ros_bridge.vehicle import Vehicle
 
+from demo_msgs.msg import CL_VehicleCommand
+
 from carla_msgs.msg import (
     CarlaEgoVehicleInfo,
     CarlaEgoVehicleInfoWheel,
@@ -64,6 +66,11 @@ class EgoVehicle(Vehicle):
             CarlaEgoVehicleStatus,
             self.get_topic_prefix() + "/vehicle_status",
             qos_profile=10)
+
+        self.control_publisher = node.new_publisher(CL_VehicleCommand,  
+            "/carla/ego_vehicle/ackermann_cmd", 
+            qos_profile=100)
+
         self.vehicle_info_publisher = node.new_publisher(
             CarlaEgoVehicleInfo,
             self.get_topic_prefix() +
@@ -176,6 +183,69 @@ class EgoVehicle(Vehicle):
             vehicle_info.center_of_mass.z = vehicle_physics.center_of_mass.z
 
             self.vehicle_info_publisher.publish(vehicle_info)
+
+
+        # print(vehicle_status.acceleration.linear)
+        accel = vehicle_status.acceleration.linear.x
+        from random import uniform
+        
+        # print('vehicle_status.velocity', round(vehicle_status.velocity, 2), 'reached_target', reached_target, 'accel', round(accel, 4))
+        if vehicle_status.velocity > 30/3.6:
+            self.big_reached_counting += 1
+            self.small_reach_counting = 0
+        else:
+            if vehicle_status.velocity < 10/3.6:
+                self.small_reach_counting += 1
+                self.big_reached_counting = 0
+            pass
+            # self.big_reached_counting -= 2
+
+        if self.target > 0 and self.big_reached_counting > 20:
+            self.big_reached_counting = 0
+            self.small_reach_counting = 0
+            start, end = -self.PID_MAX_TARGET, -0.1
+
+            self.target = round(uniform(start, end), 1)
+
+            print('======================target changed to {}'.format(self.target))
+        else:
+            if  self.target < 0 and  self.small_reach_counting > 20:
+                self.big_reached_counting = 0
+                self.small_reach_counting = 0
+                start, end = 0.1, self.PID_MAX_TARGET
+
+                self.target = round(uniform(start, end), 1)
+
+                print('======================target changed to {}'.format(self.target))
+            pass
+
+        self.publish_cl_control()
+
+    PID_MAX_TARGET = 1.1
+    target = 0.1
+    big_reached_counting = 0
+    small_reach_counting  = 0
+
+    def publish_cl_control(self):
+        import numpy
+        self.target = numpy.clip(self.target, -self.PID_MAX_TARGET, self.PID_MAX_TARGET)
+        msg = CL_VehicleCommand()
+        msg.header.seq = 1 
+        # msg.stamp = 0
+        # msg.frame_id= 'ssss'
+        msg.CL_stSysSts= 1
+        msg.CL_flgAccelEnable= True
+        msg.CL_flgStrWhlEnable= False
+        msg.CL_nStrWhlSpeed= 0
+        msg.CL_flgGearEnable= False
+        msg.CL_flgLeftTurnLight= 1
+        msg.CL_flgRightTurnLight= 1
+        msg.CL_phiTargetStrAngle= 0.0
+
+        msg.CL_gearTargetGear= 1
+        msg.CL_aTargetLongAcc= self.target
+
+        self.control_publisher.publish(msg)
 
     def update(self, frame, timestamp):
         """

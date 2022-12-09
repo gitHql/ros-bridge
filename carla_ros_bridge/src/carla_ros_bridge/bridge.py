@@ -324,7 +324,7 @@ class CarlaRosBridge(CompatibleNode):
             frame = self.carla_world.tick()
            
             self._server_clock.tick()
-            print('::::::::::::::::::::::::_synchronous_mode_update server_fps', round(self._server_clock.get_fps(), 3))
+            # print('::::::::::::::::::::::::_synchronous_mode_update server_fps', round(self._server_clock.get_fps(), 3))
 
             world_snapshot = self.carla_world.get_snapshot()
 
