@@ -42,6 +42,8 @@ if ROS_VERSION == 2:
 import matplotlib
 matplotlib.use('module://mplopengl.backend_qtgl')
 import matplotlib.pyplot as plt
+plt.rcParams['figure.figsize'] = (4,16)
+plt.rcParams['figure.dpi'] = 100
 
 class CarlaAckermannControl(CompatibleNode):
 
@@ -290,7 +292,8 @@ class CarlaAckermannControl(CompatibleNode):
         # accel = (self.info.current.accel * 1 + accel) / 2
        
         self.info.current.accel = accel
-        self.all_imu_accer.append(numpy.clip(accel, -abs(self.info.target.accel)-3, abs(self.info.target.accel) + 30))    
+        self.all_imu_accer.append(numpy.clip(accel, 
+         -abs(self.info.target.accel)-3, abs(self.info.target.accel) + 30))    
 
         self.all_pid_accel.append(self.info.target.accel)
         # print("updated", ros_ackermann_drive.CL_aTargetLongAcc, 'target_accel == ',self.info.target.accel)
@@ -307,15 +310,20 @@ class CarlaAckermannControl(CompatibleNode):
         # self.make_plt()
     max_delta_pedal = 0.0
     def make_plt(self):
-        _, = plt.plot([], label='accel_control_pedal_target.{}'.format(round(self.info.status.accel_control_pedal_target, 3)))
-        _ , = plt.plot([], label= 'throttle_lower_border={}'.format(round(self.info.status.throttle_lower_border, 3)))
-        _ , = plt.plot([], label='brake_upper_border={}'.format(round(self.info.status.brake_upper_border, 3)))
+        _, = plt.plot([], label='accel_control_pedal_target.{}'.format(
+            round(self.info.status.accel_control_pedal_target, 3)))
+        _ , = plt.plot([], label= 'throttle_lower_border={}'.format(
+            round(self.info.status.throttle_lower_border, 3)))
+        _ , = plt.plot([], label='brake_upper_border={}'.format(
+            round(self.info.status.brake_upper_border, 3)))
 
         _ , = plt.plot([], label='setpoint={}'.format(round(self.accel_controller.setpoint , 3)))
         _ , = plt.plot([], label=' current.accel={}'.format(round(self.info.current.accel, 3)))
-        _ , = plt.plot([], label='accel_control_pedal_delta={}'.format(round(self.info.status.accel_control_pedal_delta, 3) ))
+        _ , = plt.plot([], label='accel_control_pedal_delta={}'.format(
+            round(self.info.status.accel_control_pedal_delta, 3) ))
         
-        self.max_delta_pedal = max(self.max_delta_pedal, round(self.info.status.accel_control_pedal_delta, 3))
+        self.max_delta_pedal = max(self.max_delta_pedal, 
+        round(self.info.status.accel_control_pedal_delta, 3))
         _ , = plt.plot([], label='max accel_control_pedal_delta={}'.format(self.max_delta_pedal) )
 
         _ , = plt.plot([], label='max_pedel={}'.format(round(self.info.restrictions.max_pedal, 3)))
@@ -324,7 +332,8 @@ class CarlaAckermannControl(CompatibleNode):
         
 
         from loop_plt import plot_pid_imureal, clean_length
-        plot_pid_imureal(self.pedal_history, self.all_pid_accel, self.all_imu_accer, self.throttle_lower_borders)
+        plot_pid_imureal(self.pedal_history, self.all_pid_accel,
+         self.all_imu_accer, self.throttle_lower_borders)
         
         imu_hz = 1/ self.control_loop_rate
         if len(self.all_pid_accel) >= clean_length(imu_hz): # 1/self.control_loop_rate :
@@ -453,7 +462,8 @@ class CarlaAckermannControl(CompatibleNode):
             #max_accel not enough, should be max_throttle
         else:
             old = self.info.target.accel
-            self.info.target.accel = numpy.clip(target_accel, - self.info.restrictions.max_decel, self.info.restrictions.max_decel)
+            self.info.target.accel = numpy.clip(target_accel, 
+            - self.info.restrictions.max_decel, self.info.restrictions.max_decel)
 
             # self.info.target.accel = numpy.clip(
             #     target_accel, -self.info.restrictions.max_decel, self.info.restrictions.max_accel)
@@ -465,14 +475,15 @@ class CarlaAckermannControl(CompatibleNode):
             #     self.info.target.accel = numpy.clip(target_accel, 0, self.info.restrictions.max_decel)
             
             delta = self.info.target.accel - old
-            if delta != 0:
+            if delta != 0 and old != 0:
                 self.thesame_time =0
 
-                change_rate = abs(delta / (2*1.1) ) #1.1是控制器目前设置的变动范围  TODO
+                change_rate = abs(delta / (2*self.info.restrictions.max_accel) ) #1.1是控制器目前设置的变动范围  TODO
                 change_rate *= (-1 if delta < 0 else 1)
-                self.info.status.accel_control_pedal_target *= (1 + change_rate)
-                self.reinit_accel_pid()
-                print('accel_controller reinited', self.info.target.accel, 'change_rate', change_rate )
+                # self.info.status.accel_control_pedal_target *= (1 + change_rate)
+                # self.reinit_accel_pid()
+                # print('accel_controller reinited', self.info.target.accel, 'change_rate', change_rate )
+                
             # else:
             #     self.thesame_time += 1
             #     if False and self.thesame_time > 200:
@@ -662,8 +673,9 @@ class CarlaAckermannControl(CompatibleNode):
                 self.info.output.throttle = 1
                 self.info.output.brake = 0.0
 
-                self.info.status.accel_control_pedal_target  = abs(self.info.restrictions.max_pedal) * self.info.output.throttle + self.info.status.throttle_lower_border            
-                self.info.status.accel_control_pedal_target  /= 10
+                self.info.status.accel_control_pedal_target  = abs(self.info.restrictions.max_pedal) \
+                    * self.info.output.throttle + self.info.status.throttle_lower_border            
+                self.info.status.accel_control_pedal_target  /= 2
         else:
             self.cold_counter = 0
 
@@ -713,7 +725,7 @@ class CarlaAckermannControl(CompatibleNode):
                                     Ki=self.get_param("accel_Ki", alternative_value=0.),
                                     Kd=self.get_param("accel_Kd", alternative_value=0.05),
                                     sample_time=None, #self.control_loop_rate,
-                                    output_limits=(-0.02, 0.02))
+                                    output_limits=(-0.05, 0.05))
     def reinit_accel_pid(self):
         self.accel_controller = PID(Kp=self.get_param("accel_Kp", alternative_value=0.05),
                                 Ki=self.get_param("accel_Ki", alternative_value=0.),
