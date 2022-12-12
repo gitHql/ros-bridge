@@ -398,7 +398,9 @@ class CarlaAckermannControl(CompatibleNode):
         :type ros_ackermann_drive: ackermann_msgs.AckermannDrive
         :return:
         """
-        
+        if self.info.status.accel_control_pedal_target <= 0.0001 \
+            and self.info.current.speed_abs > self.full_stop_epsilon:
+             self.info.status.accel_control_pedal_target = 0.5
         self.last_ackermann_msg_received_sec = self.get_time()
         # # set target values
         # self.set_target_steering_angle(ros_ackermann_drive.steering_angle)
@@ -409,6 +411,7 @@ class CarlaAckermannControl(CompatibleNode):
 
         self.set_target_steering_angle(ros_ackermann_drive.CL_phiTargetStrAngle)
         # self.set_target_speed(ros_ackermann_drive.speed)
+        
         neg_pos_speed = self.info.current.speed + (ros_ackermann_drive.CL_aTargetLongAcc*3.6)
         self.set_target_speed(numpy.clip(neg_pos_speed, 5/3.6, self.info.restrictions.max_speed))
 
@@ -497,7 +500,7 @@ class CarlaAckermannControl(CompatibleNode):
         """
         self.info.target.jerk = target_jerk
 
-    cold_counter = 0
+    
     def vehicle_control_cycle(self):
         """
         Perform a vehicle control cycle and sends out CarlaEgoVehicleControl message
@@ -517,8 +520,6 @@ class CarlaAckermannControl(CompatibleNode):
             if True or (self.last_ackermann_msg_received_sec + 1.0) >  self.get_time():
                 self.info.output.header = self.get_msg_header()
                 self.carla_control_publisher.publish(self.info.output)
-                # print(self.info.status)
-        self.cold_counter += 1
 
     def control_steering(self):
         """
@@ -530,7 +531,7 @@ class CarlaAckermannControl(CompatibleNode):
     # from this velocity on it is allowed to switch to reverse gear
     standing_still_epsilon = 0.1
     # from this velocity on hand brake is turned on
-    full_stop_epsilon = 3/3.6
+    full_stop_epsilon = 1/3.6
 
     def control_stop_and_reverse(self):
         """
@@ -647,6 +648,7 @@ class CarlaAckermannControl(CompatibleNode):
             self.info.status.accel_control_pedal_delta,
             -self.info.restrictions.max_pedal, self.info.restrictions.max_pedal)
 
+    cold_counter = 0
     def update_drive_vehicle_control_command(self):
         """
         Apply the current speed_control_target value to throttle/brake commands
@@ -664,18 +666,24 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.status.brake_upper_border = self.info.status.throttle_lower_border + \
             phys.get_vehicle_lay_off_engine_acceleration(self.vehicle_info)
         
-        if self.info.current.speed_abs <= self.full_stop_epsilon:
+        if self.info.current.speed_abs <= self.full_stop_epsilon \
+            and abs(self.info.target.accel) < 0.1:
             self.cold_counter += 1
 
-            if self.cold_counter <= 10:
+            if self.cold_counter <= 3:
                 self.info.status.status = "accelerating"
 
-                self.info.output.throttle = 1
-                self.info.output.brake = 0.0
+                self.info.output.throttle = 1 if self.cold_counter == 0 else 1 / self.cold_counter
 
+                self.info.output.brake = 0.0
+                print('force start', self.cold_counter)
                 self.info.status.accel_control_pedal_target  = abs(self.info.restrictions.max_pedal) \
                     * self.info.output.throttle + self.info.status.throttle_lower_border            
-                self.info.status.accel_control_pedal_target  /= 2
+
+                alpha = 2**self.cold_counter
+                
+                self.info.status.accel_control_pedal_target  /= alpha
+                print('accel_control_pedal_target', self.info.status.accel_control_pedal_target)
         else:
             self.cold_counter = 0
 
@@ -715,7 +723,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.output.brake = numpy.clip(
             self.info.output.brake, 0., 1.)
         self.info.output.throttle = numpy.clip(
-            self.info.output.throttle, 0., 1.)
+            round(self.info.output.throttle,2) , 0., 1.)
 
         self.pedal_history.append(self.info.status.accel_control_pedal_target)
         self.throttle_lower_borders.append(self.info.output.throttle )
@@ -725,13 +733,14 @@ class CarlaAckermannControl(CompatibleNode):
                                     Ki=self.get_param("accel_Ki", alternative_value=0.),
                                     Kd=self.get_param("accel_Kd", alternative_value=0.05),
                                     sample_time=None, #self.control_loop_rate,
-                                    output_limits=(-0.05, 0.05))
+                                    output_limits=(-0.2, 0.2))
     def reinit_accel_pid(self):
+        print('reinit called')
         self.accel_controller = PID(Kp=self.get_param("accel_Kp", alternative_value=0.05),
                                 Ki=self.get_param("accel_Ki", alternative_value=0.),
                                 Kd=self.get_param("accel_Kd", alternative_value=0.05),
                                 sample_time=None, #self.control_loop_rate,
-                                output_limits=(-0.02, 0.02))
+                                output_limits=(-0.2, 0.2))
 
     # from ego vehicle
     def send_ego_vehicle_control_info_msg(self):

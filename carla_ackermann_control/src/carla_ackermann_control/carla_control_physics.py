@@ -95,7 +95,10 @@ def get_vehicle_driving_impedance_acceleration(vehicle_info, vehicle_status, rev
                      slope_force) /  \
         get_vehicle_mass(vehicle_info)
 
-    return deceleration
+    # if vehicle_status.velocity*3.6 < 20:
+    #     return -0.07
+    # else:
+    return deceleration + 0.3
 
 
 def get_rolling_resistance_force(vehicle_info):

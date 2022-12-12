@@ -184,37 +184,37 @@ class EgoVehicle(Vehicle):
 
             self.vehicle_info_publisher.publish(vehicle_info)
 
-
-        # print(vehicle_status.acceleration.linear)
-        accel = vehicle_status.acceleration.linear.x
+        import random, numpy as np
         from random import uniform
+        #velocity  数值单位是m/(s**2)
         
-        # print('vehicle_status.velocity', round(vehicle_status.velocity, 2), 'reached_target', reached_target, 'accel', round(accel, 4))
-        if vehicle_status.velocity > 30/3.6:
+        if vehicle_status.velocity * 3.6 > 30:
             self.big_reached_counting += 1
             self.small_reach_counting = 0
         else:
-            if vehicle_status.velocity < 10/3.6:
+            if vehicle_status.velocity *3.6 < 10:
                 self.small_reach_counting += 1
                 self.big_reached_counting = 0
             pass
             # self.big_reached_counting -= 2
 
-        if self.target > 0 and self.big_reached_counting > 100:
+        if self.target > 0 and self.big_reached_counting > 200:
             self.big_reached_counting = 0
             self.small_reach_counting = 0
-            start, end = -self.PID_MAX_TARGET, -0.1
+            start, end = -self.PID_MAX_TARGET+0.5, -0.1 
 
             self.target = round(uniform(start, end), 1)
+            self.target = random.choice([i for i in  np.arange(start, end, 0.1)])
 
             print('======================target changed to {}'.format(self.target))
         else:
-            if  self.target < 0 and  self.small_reach_counting > 20:
+            if  self.target < 0 and  self.small_reach_counting > 50:
                 self.big_reached_counting = 0
                 self.small_reach_counting = 0
                 start, end = 0.1, self.PID_MAX_TARGET
 
                 self.target = round(uniform(start, end), 1)
+                self.target = random.choice([i for i in np.arange(start, end, 0.1)])
 
                 print('======================target changed to {}'.format(self.target))
             pass
@@ -222,7 +222,7 @@ class EgoVehicle(Vehicle):
         self.publish_cl_control()
 
     PID_MAX_TARGET = 1.1
-    target = 1
+    target = 0.2
     big_reached_counting = 0
     small_reach_counting  = 0
 

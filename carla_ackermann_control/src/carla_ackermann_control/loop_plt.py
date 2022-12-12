@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def clean_length(imu_hz):
-    return 200 * imu_hz
+    return 20 * imu_hz
 
 
 def plot_pid_imureal(pedal_history, pid_val, real_val, output_throttles):

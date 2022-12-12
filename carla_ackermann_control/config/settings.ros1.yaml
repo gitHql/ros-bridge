@@ -1,52 +1,19 @@
+accel_Kp: 0.2
+#0.08能良好适应1m/s^2的首次目标，之后调整震荡较低
+#0.05能良好适应3m/s^s的首次目标，之后调整震荡较低
+accel_Ki: 0.00
+accel_Kd: 0.00 #Kp/200
+
+#disable speed control, so dosen't matter
+min_accel: 0.001
+
 # override the default values of the pid speed controller
 # (only relevant for ackermann control mode)
 speed_Kp: 0.05
 speed_Ki: 0.00
 speed_Kd: 0.50
-# override the default values of the pid acceleration controller
-# (only relevant for ackermann control mode)
-# accel_Kp: 0.02
-# accel_Ki: 0.00
-# accel_Kd: 0.05
-
-accel_Kp: 0.05
-#0.08能良好适应1m/s^2的首次目标，之后调整震荡较低
-#0.05能良好适应3m/s^s的首次目标，之后调整震荡较低
-
-accel_Ki: 0.00
-accel_Kd: 0.00 #Kp/200
-
-# set the minuse_sim_timeimum acceleration in (m/s^2)
-# This border value is used to enable the speed controller which is used to control driving
-# at more or less constant speed.
-# If the absolute value of the ackermann drive target acceleration exceeds this value,
-# directly the input acceleration is controlled  
-
-#disable speed control, so dosen't matter
-min_accel: 0.001
 
 
-
-
-
-#wrong ===========================================
-# override the default values of the pid speed controller
-# (only relevant for ackermann control mode)
-# speed_Kp: 0.05
-# speed_Ki: 0.00
-# speed_Kd: 0.50
-# # override the default values of the pid acceleration controller
-# # (only relevant for ackermann control mode)
-# # accel_Kp: 0.02
-# # accel_Ki: 0.00
-# # accel_Kd: 0.05
-
-# # accel_Kp: 5
-# # accel_Ki: 3
-# # accel_Kd: 3
-
-# accel_Kp: 0.5
-# accel_Ki: 0.00
-# accel_Kd: 0.0
-
-
+# 向前降低油门的时候：
+#实际的throttle<target_pedal，导致target_pedal 立刻上升，从而throttle跟着target_pdel一起上升
+#升高后，反而离目标accel更远，所以又下降。需要拉客target_pedal和throttle的平行距离（避免过快交叉）
