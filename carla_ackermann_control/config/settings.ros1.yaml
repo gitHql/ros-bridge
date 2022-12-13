@@ -1,7 +1,7 @@
-accel_Kp: 0.15
+accel_Kp: 0.01
 #0.08能良好适应1m/s^2的首次目标，之后调整震荡较低
 #0.05能良好适应3m/s^s的首次目标，之后调整震荡较低
-accel_Ki: 0.09
+accel_Ki: 0.0
 accel_Kd: 0.0 #Kp/200
 
 #disable speed control, so dosen't matter
