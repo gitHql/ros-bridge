@@ -198,17 +198,17 @@ class EgoVehicle(Vehicle):
             pass
             # self.big_reached_counting -= 2
 
-        if self.target > 0 and self.big_reached_counting > 200:
+        if self.target > 0 and self.big_reached_counting > 40:
             self.big_reached_counting = 0
             self.small_reach_counting = 0
-            start, end = -self.PID_MAX_TARGET+0.5, -0.1 
+            start, end = -self.PID_MAX_TARGET, -0.4
 
             self.target = round(uniform(start, end), 1)
-            self.target = random.choice([i for i in  np.arange(start, end, 0.1)])
+            self.target = random.choice([i for i in  np.arange(start, end, 0.2)])
 
             print('======================target changed to {}'.format(self.target))
         else:
-            if  self.target < 0 and  self.small_reach_counting > 50:
+            if  self.target < 0 and  self.small_reach_counting > 40:
                 self.big_reached_counting = 0
                 self.small_reach_counting = 0
                 start, end = 0.1, self.PID_MAX_TARGET
@@ -222,7 +222,7 @@ class EgoVehicle(Vehicle):
         self.publish_cl_control()
 
     PID_MAX_TARGET = 1.1
-    target = 0.2
+    target = 1
     big_reached_counting = 0
     small_reach_counting  = 0
 
