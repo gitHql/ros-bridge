@@ -98,7 +98,7 @@ def get_vehicle_driving_impedance_acceleration(vehicle_info, vehicle_status, rev
     # if vehicle_status.velocity*3.6 < 20:
     #     return -0.07
     # else:
-    return deceleration + 0.3
+    return deceleration
 
 
 def get_rolling_resistance_force(vehicle_info):
@@ -241,6 +241,8 @@ def get_vehicle_max_acceleration(_):
     """
     max_acceleration = get_vehicle_max_speed(_)/14.7
     # max_acceleration = 8 #tesla
+
+    # return 1  #锚定最大加速度和油门100%比例
     return max_acceleration
 
 
