@@ -294,6 +294,7 @@ class KeyboardControl(object):
 # ==============================================================================
 
 
+from geometry_msgs.msg import PoseWithCovarianceStamped, Pose
 
 class HUD(object):
     """
@@ -359,6 +360,12 @@ class HUD(object):
             self.carla_status_updated,
             qos_profile=10)
 
+        self.change_location = node.new_publisher(
+            Pose,
+            "/carla/ego_vehicle/control/set_transform", 
+            qos_profile=1
+        )
+
     def tick(self, clock):
         """
         tick method
@@ -412,6 +419,13 @@ class HUD(object):
             data.pose.pose.orientation.z])
         self.yaw = math.degrees(yaw)
         self.update_info_text()
+
+        if self.y < -180:  #实测数值，超过该位置后，就难以控制
+            pose = data.pose.pose
+            # print('new pose ', data)
+            pose.position.y = 20
+
+            self.change_location.publish(pose)
 
     def update_info_text(self):
         """
