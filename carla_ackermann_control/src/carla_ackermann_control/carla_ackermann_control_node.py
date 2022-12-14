@@ -34,13 +34,14 @@ from carla_ackermann_msgs.msg import EgoVehicleControlInfo  # pylint: disable=no
 ROS_VERSION = roscomp.get_ros_version()
 
 if ROS_VERSION == 1:
-    from carla_ackermann_control.cfg import EgoVehicleControlParameterConfig # pylint: disable=no-name-in-module,import-error,ungrouped-imports
+    # pylint: disable=no-name-in-module,import-error,ungrouped-imports
+    from carla_ackermann_control.cfg import EgoVehicleControlParameterConfig 
     from dynamic_reconfigure.server import Server # pylint: disable=no-name-in-module,import-error
 if ROS_VERSION == 2:
     from rcl_interfaces.msg import SetParametersResult
 
 import matplotlib
-matplotlib.use('module://mplopengl.backend_qtgl')
+# matplotlib.use('module://mplopengl.backend_qtgl')
 import matplotlib.pyplot as plt
 plt.rcParams['figure.figsize'] = (16,9)
 plt.rcParams['figure.dpi'] = 100
@@ -289,8 +290,10 @@ class CarlaAckermannControl(CompatibleNode):
 
         accel = (self.info.current.accel * 4 + accel) / 5
        
-        self.info.current.accel = accel
-        self.all_imu_accer.append(numpy.clip(accel, 
+        # self.set_current_accel(accel)
+        # self.info.current.accel = accel
+
+        self.all_imu_accer.append(numpy.clip(self.info.current.accel, 
          -abs(self.info.target.accel)-3, abs(self.info.target.accel) + 30))    
 
         self.all_pid_accel.append(self.info.target.accel)
@@ -358,7 +361,7 @@ class CarlaAckermannControl(CompatibleNode):
         header.stamp = roscomp.ros_timestamp(sec=self.get_time(), from_sec=True)
         return header
 
-    def vehicle_status_updated(self, vehicle_status):
+    def vehicle_status_updated(self, vehicle_status:CarlaEgoVehicleStatus):
         """
         Stores the ackermann drive message for the next controller calculation
 
@@ -368,8 +371,17 @@ class CarlaAckermannControl(CompatibleNode):
         """
 
         # set target values
+       
         self.vehicle_status = vehicle_status
 
+        # delta_time = current_time_sec - self.info.current.time_sec
+        # if delta_time > 0:
+        #     print(round(delta_time, 3))
+        #     delta_speed = current_speed - self.info.current.speed
+        #     current_accel = delta_speed / delta_time
+
+        current_accel = vehicle_status.acceleration.linear.y
+        self.set_current_accel(-current_accel)
 
     def vehicle_info_updated(self, vehicle_info):
         """
@@ -429,8 +441,6 @@ class CarlaAckermannControl(CompatibleNode):
         neg_pos_speed = self.info.current.speed + (ros_ackermann_drive.CL_aTargetLongAcc*3.6)
         self.set_target_speed(numpy.clip(neg_pos_speed, 5/3.6, self.info.restrictions.max_speed))
 
-        own_define_max_speed = self.info.restrictions.max_speed 
-        own_define_max_speed = 90/3.6
         self.set_target_accel(ros_ackermann_drive.CL_aTargetLongAcc)
         self.set_target_jerk(0.0)
         
@@ -448,7 +458,8 @@ class CarlaAckermannControl(CompatibleNode):
         """
         self.info.target.steering_angle = -target_steering_angle
         if abs(self.info.target.steering_angle) > self.info.restrictions.max_steering_angle:
-            self.logerr("Max steering angle reached, clipping value")
+            self.logerr("Max steering angle reached, clipping value from {} clip.range {}"\
+                .format(self.info.target.steering_angle, self.info.restrictions.max_steering_angle))
             self.info.target.steering_angle = numpy.clip(
                 self.info.target.steering_angle,
                 -self.info.restrictions.max_steering_angle,
@@ -477,6 +488,8 @@ class CarlaAckermannControl(CompatibleNode):
         # if speed is set to zero, then use max decel value
         if self.info.target.speed_abs < epsilon:
             self.info.target.accel = -self.info.restrictions.max_decel
+
+            self.target_changed_counting = self.change_target_delay_count_needed
             #max_accel not enough, should be max_throttle
         else:
             old = self.info.target.accel
@@ -492,12 +505,24 @@ class CarlaAckermannControl(CompatibleNode):
             # if self.info.current.speed <= 5/3.6:
             #     self.info.target.accel = numpy.clip(target_accel, 0, self.info.restrictions.max_decel)
             
-            delta = self.info.target.accel - old
-            if delta != 0 and old != 0:
+            delta_to_old = self.info.target.accel - old
+            if delta_to_old != 0:
+                delta_to_real = self.info.target.accel - self.info.current.accel
+                if delta_to_real < -0.3 or delta_to_real > 0.3:
+                    self.target_changed_counting = self.change_target_delay_count_needed * 2
+                else:
+                    self.target_changed_counting = self.change_target_delay_count_needed 
+            else:
+                if self.in_cold_starting:
+                    pass
+                else:
+                    self.target_changed_counting -= 1
+
+            if delta_to_old != 0 and old != 0:
                 self.thesame_time =0
 
-                change_rate = abs(delta / (2*self.info.restrictions.max_accel) ) #1.1是控制器目前设置的变动范围  TODO
-                change_rate *= (-1 if delta < 0 else 1)
+                change_rate = abs(delta_to_old / (2*self.info.restrictions.max_accel) ) #1.1是控制器目前设置的变动范围  TODO
+                change_rate *= (-1 if delta_to_old < 0 else 1)
                 # self.info.status.accel_control_pedal_target *= (1 + change_rate)
                 # self.reinit_accel_pid()
                 # print('accel_controller reinited', self.info.target.accel, 'change_rate', change_rate )
@@ -798,7 +823,8 @@ class CarlaAckermannControl(CompatibleNode):
         import threading
         threading.Thread(target = lambda : self.control_info_publisher.publish(self.info)).run()
         
-
+    target_changed_counting = 100
+    change_target_delay_count_needed = 100
     def update_current_values(self):
         """
         Function to update vehicle control current values.
@@ -809,20 +835,27 @@ class CarlaAckermannControl(CompatibleNode):
 
         :return:
         """
+        
+
         current_time_sec = self.get_time()
-        delta_time = current_time_sec - self.info.current.time_sec
         current_speed = self.vehicle_status.velocity
-        # if delta_time > 0:
-        #     delta_speed = current_speed - self.info.current.speed
-        #     current_accel = delta_speed / delta_time
-        #     # average filter
-        #     self.info.current.accel = (self.info.current.accel * 4 + current_accel) / 5
-        #     print( ' self.info.current.accel ', self.info.current.accel )
         self.info.current.time_sec = current_time_sec
         self.info.current.speed = current_speed
         self.info.current.speed_abs = abs(current_speed)
     
-    
+    def set_current_accel(self, current_accel):
+        current_accel = numpy.clip(current_accel, -3.7, 3.7)
+
+        self.info.current.accel = current_accel 
+        return
+        # average filter
+        if self.target_changed_counting > 0:
+            self.info.current.accel = current_accel 
+            print('not aver')
+        else:
+            print('aver')
+            self.info.current.accel = (self.info.current.accel * 9 + current_accel) / 10
+            
     def run(self):
         """
         Control loop

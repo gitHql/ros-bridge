@@ -191,38 +191,44 @@ class EgoVehicle(Vehicle):
         if vehicle_status.velocity * 3.6 > 30:
             self.big_reached_counting += 1
             self.small_reach_counting = 0
+            
         else:
-            if vehicle_status.velocity *3.6 < 10:
+            if vehicle_status.velocity *3.6 < 50:
                 self.small_reach_counting += 1
                 self.big_reached_counting = 0
             pass
             # self.big_reached_counting -= 2
 
-        if self.target > 0 and self.big_reached_counting > 40:
+        if self.target > 0 and (self.big_reached_counting > 40 or  vehicle_status.velocity *3.6 > 60 ):
+            #fall down
             self.big_reached_counting = 0
             self.small_reach_counting = 0
             start, end = -self.PID_MAX_TARGET, -0.4
 
             self.target = round(uniform(start, end), 1)
             self.target = random.choice([i for i in  np.arange(start, end, 0.2)])
+            self.angle = 0.0
 
             print('======================target changed to {}'.format(self.target))
         else:
-            if  self.target < 0 and  self.small_reach_counting > 40:
+            if  self.target < 0 and ( self.small_reach_counting > 40 or  vehicle_status.velocity *3.6 <= 3):
+                #rise up
                 self.big_reached_counting = 0
                 self.small_reach_counting = 0
                 start, end = 0.1, self.PID_MAX_TARGET
 
                 self.target = round(uniform(start, end), 1)
                 self.target = random.choice([i for i in np.arange(start, end, 0.1)])
+                self.angle = 0.0
 
                 print('======================target changed to {}'.format(self.target))
             pass
 
         self.publish_cl_control()
 
-    PID_MAX_TARGET = 1.1
+    PID_MAX_TARGET = 3
     target = 1
+    angle = 0.0
     big_reached_counting = 0
     small_reach_counting  = 0
 
@@ -240,9 +246,9 @@ class EgoVehicle(Vehicle):
         msg.CL_flgGearEnable= False
         msg.CL_flgLeftTurnLight= 1
         msg.CL_flgRightTurnLight= 1
-        msg.CL_phiTargetStrAngle= 0.0
+        msg.CL_phiTargetStrAngle= self.angle
 
-        msg.CL_gearTargetGear= 1
+        msg.CL_gearTargetGear= 0
         msg.CL_aTargetLongAcc= self.target
 
         self.control_publisher.publish(msg)

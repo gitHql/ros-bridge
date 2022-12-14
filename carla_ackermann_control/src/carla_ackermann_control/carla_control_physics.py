@@ -209,6 +209,7 @@ def get_vehicle_max_steering_angle(vehicle_info):
         if wheel.max_steer_angle:
             if wheel.max_steer_angle and wheel.max_steer_angle < max_steering_angle:
                 max_steering_angle = wheel.max_steer_angle
+    print('max_steering_angle', max_steering_angle)
     return max_steering_angle
 
 

@@ -408,7 +408,7 @@ class HUD(object):
         self.longitude = data.longitude
         self.update_info_text()
 
-    def odometry_updated(self, data):
+    def odometry_updated(self, data:Odometry):
         self.x = data.pose.pose.position.x
         self.y = data.pose.pose.position.y
         self.z = data.pose.pose.position.z
@@ -420,10 +420,30 @@ class HUD(object):
         self.yaw = math.degrees(yaw)
         self.update_info_text()
 
-        if self.y < -180:  #实测数值，超过该位置后，就难以控制
+        #1.实测数值，超过地图区域的该位置后，就难以控制 
+        #2.撞墙
+        #3.掉悬崖了
+        if self.y < -180 \
+            or \
+                ( abs(self.vehicle_status.acceleration.linear.y) <= 0.01 \
+            and self.vehicle_status.control.throttle == 1 \
+            and abs(self.vehicle_status.control.brake)  < 0.01) \
+                or \
+                    (data.pose.pose.position.z < -1) \
+                :
             pose = data.pose.pose
             # print('new pose ', data)
-            pose.position.y = 20
+            pose.position.x = -60
+            pose.position.y = -50
+
+            self.change_location.publish(pose)
+
+
+
+            pose = data.pose.pose
+            # print('new pose ', data)
+            pose.position.x = -60
+            pose.position.y = -50
 
             self.change_location.publish(pose)
 
