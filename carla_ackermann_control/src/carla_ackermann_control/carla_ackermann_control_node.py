@@ -10,9 +10,7 @@
 Control Carla ego vehicle by using AckermannDrive messages
 """
 
-import sys
-
-import numpy
+import sys, numpy
 from simple_pid import PID  # pylint: disable=import-error,wrong-import-order
 
 import ros_compatibility as roscomp
@@ -29,7 +27,7 @@ from carla_msgs.msg import CarlaEgoVehicleStatus  # pylint: disable=no-name-in-m
 from carla_msgs.msg import CarlaEgoVehicleControl  # pylint: disable=no-name-in-module,import-error
 from carla_msgs.msg import CarlaEgoVehicleInfo  # pylint: disable=no-name-in-module,import-error
 from carla_ackermann_msgs.msg import EgoVehicleControlInfo  # pylint: disable=no-name-in-module,import-error
-
+from logical import LogicalStatus
 
 ROS_VERSION = roscomp.get_ros_version()
 
@@ -39,12 +37,6 @@ if ROS_VERSION == 1:
     from dynamic_reconfigure.server import Server # pylint: disable=no-name-in-module,import-error
 if ROS_VERSION == 2:
     from rcl_interfaces.msg import SetParametersResult
-
-import matplotlib
-# matplotlib.use('module://mplopengl.backend_qtgl')
-import matplotlib.pyplot as plt
-plt.rcParams['figure.figsize'] = (16,9)
-plt.rcParams['figure.dpi'] = 100
 
 class CarlaAckermannControl(CompatibleNode):
 
@@ -177,8 +169,9 @@ class CarlaAckermannControl(CompatibleNode):
             "/carla/" + self.role_name + "/ackermann_control/control_info",
             qos_profile=1)
 
-        self.inited_when_restart = False
-        self.clean_plot()
+        
+        self.logical_status = LogicalStatus()
+        
 
     if ROS_VERSION == 1:
 
@@ -255,7 +248,7 @@ class CarlaAckermannControl(CompatibleNode):
 
             return SetParametersResult(successful=True)
     
-    last_time_accel = 0
+    
     def vehicle_imu_updated(self, msg):
         if not isinstance(msg, Imu):
             return
@@ -281,74 +274,25 @@ class CarlaAckermannControl(CompatibleNode):
         # #imu converted value
         # accel = numpy.clip(world_x, -100, 100)
 
-
         #imu direct value
         #从静止到启动的瞬时加速度巨大, 直接剪切裁剪到目标加速度，使得PID回归
 
         accel = numpy.clip(cord.x, -3.7, 3.7)
         # accel = numpy.clip(world_x, -3.7, 3.7)
-
-        accel = (self.info.current.accel * 4 + accel) / 5
-       
         # self.set_current_accel(accel)
+
+        # accel = (self.info.current.accel * 4 + accel) / 5
         # self.info.current.accel = accel
 
-        self.all_imu_accer.append(numpy.clip(self.info.current.accel, 
+        self.logical_status.all_imu_accer.append(numpy.clip(self.info.current.accel, 
          -abs(self.info.target.accel)-3, abs(self.info.target.accel) + 30))    
 
-        self.all_pid_accel.append(self.info.target.accel)
+        self.logical_status.all_pid_accel.append(self.info.target.accel)
         # print("updated", ros_ackermann_drive.CL_aTargetLongAcc, 'target_accel == ',self.info.target.accel)
 
         self.update_current_values()
         self.vehicle_control_cycle()
         self.send_ego_vehicle_control_info_msg()
-
-        # plt.plot([], label=['ax={}'.format(ax)])
-        # plt.plot([], label=['ay={}'.format(ay)])
-        # plt.plot([], label=['az={}'.format(az)])
-
-
-        # self.make_plt()
-    max_delta_pedal = 0.0
-    min_target_pedal = 0.0
-    def make_plt(self):
-        _, = plt.plot([], label='accel_control_pedal_target.{}'.format(
-            round(self.info.status.accel_control_pedal_target, 3)))
-
-        self.min_target_pedal = min(self.min_target_pedal, 
-        self.info.status.accel_control_pedal_target)
-        _, = plt.plot([], label='min_target_pedal.{}'.format(
-            round(self.min_target_pedal, 3)))
-
-        _,  plt.plot([], label='accel_control_pedal_target.{}'.format(
-            round(self.info.status.accel_control_pedal_target, 3)))
-        _ , = plt.plot([], label= 'throttle_lower_border={}'.format(
-            round(self.info.status.throttle_lower_border, 3)))
-        _ , = plt.plot([], label='brake_upper_border={}'.format(
-            round(self.info.status.brake_upper_border, 3)))
-
-        _ , = plt.plot([], label='setpoint={}'.format(round(self.accel_controller.setpoint , 3)))
-        _ , = plt.plot([], label=' current.accel={}'.format(round(self.info.current.accel, 3)))
-        _ , = plt.plot([], label='accel_control_pedal_delta={}'.format(
-            round(self.info.status.accel_control_pedal_delta, 5) ))
-        
-        self.max_delta_pedal = max(self.max_delta_pedal, 
-        round(self.info.status.accel_control_pedal_delta, 3))
-        _ , = plt.plot([], label='max accel_control_pedal_delta={}'.format(self.max_delta_pedal) )
-
-        _ , = plt.plot([], label='max_pedel={}'.format(round(self.info.restrictions.max_pedal, 3)))
-        _, = plt.plot([], label='status={}'.format(self.info.status.status))
-        _, = plt.plot([], label='throttle={}'.format(self.info.output.throttle))
-        
-
-        from loop_plt import plot_pid_imureal, clean_length
-        plot_pid_imureal(self.pedal_history, self.all_pid_accel,
-         self.all_imu_accer, self.throttle_lower_borders, self.brake_upper_borders)
-        
-        imu_hz = 1/ self.control_loop_rate
-        if len(self.all_pid_accel) >= clean_length(imu_hz): # 1/self.control_loop_rate :
-            self.clean_plot()
-       
 
     def get_msg_header(self):
         """
@@ -419,12 +363,12 @@ class CarlaAckermannControl(CompatibleNode):
         """
 
         #start:补充非0起步的时候target设置的情况
-        if self.inited_when_restart and abs(self.info.status.accel_control_pedal_target) <= 0.0001 \
-            and self.info.current.speed_abs > self.full_stop_speed_epsilon:
+        if self.logical_status.inited_when_restart and abs(self.info.status.accel_control_pedal_target) <= 0.0001 \
+            and self.info.current.speed_abs > self.logical_status.full_stop_speed_epsilon:
 
             self.info.status.accel_control_pedal_target = 0.5
             print('happens when restart, 0.5 target')
-            self.inited_when_restart = True
+            self.logical_status.inited_when_restart = True
         #end
 
         self.last_ackermann_msg_received_sec = self.get_time()
@@ -444,13 +388,6 @@ class CarlaAckermannControl(CompatibleNode):
         self.set_target_accel(ros_ackermann_drive.CL_aTargetLongAcc)
         self.set_target_jerk(0.0)
         
-       
-    def clean_plot(self):
-        self.all_pid_accel = []
-        self.all_imu_accer = []
-        self.pedal_history = []
-        self.brake_upper_borders = []
-        self.throttle_lower_borders = []
         
     def set_target_steering_angle(self, target_steering_angle):
         """
@@ -477,19 +414,17 @@ class CarlaAckermannControl(CompatibleNode):
             self.info.target.speed = target_speed
         self.info.target.speed_abs = abs(self.info.target.speed)
 
-    thesame_time = 0
+    
     def set_target_accel(self, target_accel):
         target_accel = round(target_accel, 4)
         """
         set target accel
         """
-        
-        epsilon = 0.00001
         # if speed is set to zero, then use max decel value
-        if self.info.target.speed_abs < epsilon:
+        if self.info.target.speed_abs < self.logical_status.standing_still_epsilon:
             self.info.target.accel = -self.info.restrictions.max_decel
 
-            self.target_changed_counting = self.change_target_delay_count_needed
+            self.logical_status.target_changed_counting = self.logical_status.change_target_delay_count_needed
             #max_accel not enough, should be max_throttle
         else:
             old = self.info.target.accel
@@ -509,18 +444,16 @@ class CarlaAckermannControl(CompatibleNode):
             if delta_to_old != 0:
                 delta_to_real = self.info.target.accel - self.info.current.accel
                 if delta_to_real < -0.3 or delta_to_real > 0.3:
-                    self.target_changed_counting = self.change_target_delay_count_needed * 2
+                    self.logical_status.target_changed_counting = self.logical_status.change_target_delay_count_needed * 2
                 else:
-                    self.target_changed_counting = self.change_target_delay_count_needed 
+                    self.logical_status.target_changed_counting = self.logical_status.change_target_delay_count_needed 
             else:
-                if self.in_cold_starting:
+                if self.logical_status.in_cold_starting:
                     pass
                 else:
-                    self.target_changed_counting -= 1
+                    self.logical_status.target_changed_counting -= 1
 
             if delta_to_old != 0 and old != 0:
-                self.thesame_time =0
-
                 change_rate = abs(delta_to_old / (2*self.info.restrictions.max_accel) ) #1.1是控制器目前设置的变动范围  TODO
                 change_rate *= (-1 if delta_to_old < 0 else 1)
                 # self.info.status.accel_control_pedal_target *= (1 + change_rate)
@@ -568,11 +501,6 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.output.steer = self.info.target.steering_angle / \
             self.info.restrictions.max_steering_angle
 
-    # from this velocity on it is allowed to switch to reverse gear
-    standing_still_epsilon = 0.1
-    # from this velocity on hand brake is turned on
-    full_stop_speed_epsilon = 3/3.6
-
     def control_stop_and_reverse(self):
         """
         Handle stop and switching to reverse gear
@@ -581,7 +509,7 @@ class CarlaAckermannControl(CompatibleNode):
 
         # auto-control of hand-brake and reverse gear
         self.info.output.hand_brake = False
-        if self.info.current.speed_abs < self.standing_still_epsilon:
+        if self.info.current.speed_abs < self.logical_status.standing_still_epsilon:
             # standing still, change of driving direction allowed
             self.info.status.status = "standing"
             if self.info.target.speed < 0:
@@ -594,7 +522,7 @@ class CarlaAckermannControl(CompatibleNode):
                     self.loginfo(
                         "VehicleControl: Change of driving direction to forward")
                     self.info.output.reverse = False
-            if self.info.target.speed_abs < self.full_stop_speed_epsilon:
+            if self.info.target.speed_abs < self.logical_status.full_stop_speed_epsilon:
                 self.info.status.status = "full stop"
                 self.info.status.speed_control_accel_target = 0.
                 self.info.status.accel_control_pedal_target = 0.
@@ -689,9 +617,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.status.accel_control_pedal_target = numpy.clip(
              self.info.status.accel_control_pedal_target,
             -self.info.restrictions.max_pedal, self.info.restrictions.max_pedal)
-
-    cold_counter = 0
-    in_cold_starting = True
+    
     def update_drive_vehicle_control_command(self):
         """
         Apply the current speed_control_target value to throttle/brake commands
@@ -709,23 +635,23 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.status.brake_upper_border = self.info.status.throttle_lower_border + \
             phys.get_vehicle_lay_off_engine_acceleration(self.vehicle_info)
 
-        if self.info.current.speed_abs <= self.full_stop_speed_epsilon \
+        if self.info.current.speed_abs <= self.logical_status.full_stop_speed_epsilon \
             and self.info.target.accel >= 0.1: #ignored backward
-            self.in_cold_starting = True
-            self.cold_counter += 1
+            self.logical_status.in_cold_starting = True
+            self.logical_status.cold_counter += 1
 
-            if self.cold_counter <= 300:
+            if self.logical_status.cold_counter <= 300:
                 self.info.status.status = "accelerating"
 
                 self.info.output.throttle = 1
 
                 self.info.output.brake = 0.0
-                print('force start', self.cold_counter)
+                print('force start', self.logical_status.cold_counter)
                 self.info.status.accel_control_pedal_target  = abs(self.info.restrictions.max_pedal) \
                     * self.info.output.throttle + self.info.status.throttle_lower_border            
 
-                # alpha = 1.1**self.cold_counter
-                # if self.info.current.speed_abs > self.full_stop_speed_epsilon:
+                # alpha = 1.1**self.logical_status.cold_counter
+                # if self.info.current.speed_abs > self.logical_status.full_stop_speed_epsilon:
                 #     self.info.status.accel_control_pedal_target  /= alpha
                 # print('accel_control_pedal_target',
                 #     self.info.status.accel_control_pedal_target)
@@ -733,8 +659,8 @@ class CarlaAckermannControl(CompatibleNode):
                 self.reinit_accel_pid()
         else:
             
-            if self.in_cold_starting == True:
-                self.in_cold_starting = False
+            if self.logical_status.in_cold_starting == True:
+                self.logical_status.in_cold_starting = False
                 
                 ranges = [3, 2.5, 2, 1.5, 1, 0.5]
                 throttle_alpha = 1
@@ -750,7 +676,7 @@ class CarlaAckermannControl(CompatibleNode):
                 self.info.output.brake = 0.0
                 self.info.status.status = "accelerating"
 
-                self.cold_counter = 0
+                self.logical_status.cold_counter = 0
             else:
                 if self.info.status.accel_control_pedal_target > self.info.status.throttle_lower_border:
                     # if self.info.current.accel < self.info.target.accel:
@@ -794,9 +720,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.output.throttle = numpy.clip(
             round(self.info.output.throttle,2) , 0., 1.)
 
-        self.pedal_history.append(self.info.status.accel_control_pedal_target)
-        self.brake_upper_borders .append(self.info.status.brake_upper_border )
-        self.throttle_lower_borders.append(self.info.output.throttle )
+        self.logical_status.append_info(self.info)
 
     def init_accel_pid(self):
         self.accel_controller = PID(Kp=self.get_param("accel_Kp", alternative_value=0.05),
@@ -823,8 +747,7 @@ class CarlaAckermannControl(CompatibleNode):
         import threading
         threading.Thread(target = lambda : self.control_info_publisher.publish(self.info)).run()
         
-    target_changed_counting = 100
-    change_target_delay_count_needed = 100
+    
     def update_current_values(self):
         """
         Function to update vehicle control current values.
@@ -835,8 +758,6 @@ class CarlaAckermannControl(CompatibleNode):
 
         :return:
         """
-        
-
         current_time_sec = self.get_time()
         current_speed = self.vehicle_status.velocity
         self.info.current.time_sec = current_time_sec
@@ -849,7 +770,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.current.accel = current_accel 
         return
         # average filter
-        if self.target_changed_counting > 0:
+        if self.logical_status.target_changed_counting > 0:
             self.info.current.accel = current_accel 
             print('not aver')
         else:
@@ -859,22 +780,8 @@ class CarlaAckermannControl(CompatibleNode):
     def run(self):
         """
         Control loop
-
         :return:
         """
-
-        # def loop(timer_event=None):
-        #     print('ros spin loop')
-        #     pass
-
-        # self.new_timer(self.control_loop_rate, loop)
-        
-        # import threading
-        # threading.Thread(target= lambda : \
-        #     self.spin()
-        # ).run()
-
-
         import sys, signal
         def signal_handler(signal, frame):
             print("\nprogram exiting gracefully")
@@ -882,11 +789,10 @@ class CarlaAckermannControl(CompatibleNode):
 
         signal.signal(signal.SIGINT, signal_handler)
 
-        
         while(True):
-            self.make_plt()
-            import time
-            time.sleep(0.1)
+            self.logical_status.make_plt(self.info, self.control_loop_rate, self.accel_controller)
+            import rospy
+            rospy.sleep(0.01)
 
 def main(args=None):
     roscomp.init("carla_ackermann_control", args=args)
