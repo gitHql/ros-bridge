@@ -7,7 +7,8 @@ plt.rcParams['figure.figsize'] = (16,9)
 plt.rcParams['figure.dpi'] = 100
 
 
-def plot_pid_imureal(pedal_history, pid_val, real_val, output_throttles, brake_upper_borders):
+def plot_pid_imureal(pedal_history, pid_val, real_val,  \
+    output_throttles, brake_upper_borders):
     plt.ion()  
 
     a , = plt.plot(pid_val, label='pid want acc')
@@ -15,14 +16,13 @@ def plot_pid_imureal(pedal_history, pid_val, real_val, output_throttles, brake_u
     b, = plt.plot(real_val,  linewidth=2, label='real_acc')
 
     low = [val - (0.1 if val > 0 else 0.2 )for val in pid_val]
-    a , = plt.plot(low, label='pid_low')
+    a , = plt.plot(low,  linestyle='-.', label='pid_low')
 
     high =  [val + (0.1 if val > 0 else 0.2) for val in pid_val]
-    a , = plt.plot(high, label='pid_up')
+    a , = plt.plot(high,  linestyle='-.',label='pid_up')
 
-    c, = plt.plot(pedal_history, label = 'target pedal')
-    d, = plt.plot(output_throttles,  linestyle='--',  label = 'output_throttles')
-
+    c, = plt.plot(pedal_history, linestyle='--',  label = 'target pedal')
+    d, = plt.plot(output_throttles, linestyle='--',  label = 'output_throttles')
     d, = plt.plot(brake_upper_borders, label = 'brake_upper_borders')
     
 
@@ -55,6 +55,37 @@ class LogicalStatus:
     
         self.max_delta_pedal = 0.0
         self.min_target_pedal = 0.0
+
+    def init_info(self, info, sec):
+        # target values
+        info.target.steering_angle = 0.
+        info.target.speed = 0.
+        info.target.speed_abs = 0.
+        info.target.accel = 0.
+        info.target.jerk = 0.
+
+        # current values
+        info.current.time_sec = sec
+        info.current.speed = 0.
+        info.current.speed_abs = 0.
+        info.current.accel = 0.
+
+        # control values
+        info.status.status = 'n/a'
+        info.status.speed_control_activation_count = 0
+        info.status.speed_control_accel_delta = 0.
+        info.status.speed_control_accel_target = 0.
+        info.status.accel_control_pedal_delta = 0.
+        info.status.accel_control_pedal_target = 0.
+        info.status.brake_upper_border = 0.
+        info.status.throttle_lower_border = 0.
+
+        # control output
+        info.output.throttle = 0.
+        info.output.brake = 1.0
+        info.output.steer = 0.
+        info.output.reverse = False
+        info.output.hand_brake = True
 
     def clean_plot(self):
         self.all_pid_accel = []

@@ -81,7 +81,6 @@ class CarlaAckermannControl(CompatibleNode):
             )
         if ROS_VERSION == 2:
             self. add_on_set_parameters_callback(self.reconfigure_pid_parameters)
-
         
         self.last_ackermann_msg_received_sec =  self.get_time()
         self.vehicle_status = CarlaEgoVehicleStatus()
@@ -90,38 +89,11 @@ class CarlaAckermannControl(CompatibleNode):
         # control info
         self.info = EgoVehicleControlInfo()
 
-        # set initial maximum values
-        self.vehicle_info_updated(self.vehicle_info)
+        # set initial maximum values, must have info updated
+        self.vehicle_info_update_restrictions(self.vehicle_info)
 
-        # target values
-        self.info.target.steering_angle = 0.
-        self.info.target.speed = 0.
-        self.info.target.speed_abs = 0.
-        self.info.target.accel = 0.
-        self.info.target.jerk = 0.
-
-        # current values
-        self.info.current.time_sec = self.get_time()
-        self.info.current.speed = 0.
-        self.info.current.speed_abs = 0.
-        self.info.current.accel = 0.
-
-        # control values
-        self.info.status.status = 'n/a'
-        self.info.status.speed_control_activation_count = 0
-        self.info.status.speed_control_accel_delta = 0.
-        self.info.status.speed_control_accel_target = 0.
-        self.info.status.accel_control_pedal_delta = 0.
-        self.info.status.accel_control_pedal_target = 0.
-        self.info.status.brake_upper_border = 0.
-        self.info.status.throttle_lower_border = 0.
-
-        # control output
-        self.info.output.throttle = 0.
-        self.info.output.brake = 1.0
-        self.info.output.steer = 0.
-        self.info.output.reverse = False
-        self.info.output.hand_brake = True
+        self.logical_status = LogicalStatus()
+        self.logical_status.init_info(self.info, self.get_time())
 
         # ackermann drive commands
         self.control_subscriber = self.new_subscription(
@@ -144,7 +116,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.vehicle_info_subscriber = self.new_subscription(
             CarlaEgoVehicleInfo,
             "/carla/" + self.role_name + "/vehicle_info",
-            self.vehicle_info_updated,
+            self.vehicle_info_update_restrictions,
            qos_profile=1
         )
 
@@ -155,7 +127,6 @@ class CarlaAckermannControl(CompatibleNode):
             self.vehicle_imu_updated,
            qos_profile=1
         )
-
 
         # to send command to carla
         self.carla_control_publisher = self.new_publisher(
@@ -168,10 +139,6 @@ class CarlaAckermannControl(CompatibleNode):
             EgoVehicleControlInfo,
             "/carla/" + self.role_name + "/ackermann_control/control_info",
             qos_profile=1)
-
-        
-        self.logical_status = LogicalStatus()
-        
 
     if ROS_VERSION == 1:
 
@@ -247,7 +214,6 @@ class CarlaAckermannControl(CompatibleNode):
             )
 
             return SetParametersResult(successful=True)
-    
     
     def vehicle_imu_updated(self, msg):
         if not isinstance(msg, Imu):
@@ -327,7 +293,7 @@ class CarlaAckermannControl(CompatibleNode):
         current_accel = vehicle_status.acceleration.linear.y
         self.set_current_accel(-current_accel)
 
-    def vehicle_info_updated(self, vehicle_info):
+    def vehicle_info_update_restrictions(self, vehicle_info):
         """
         Stores the ackermann drive message for the next controller calculation
 
@@ -372,19 +338,11 @@ class CarlaAckermannControl(CompatibleNode):
         #end
 
         self.last_ackermann_msg_received_sec = self.get_time()
-        # # set target values
-        # self.set_target_steering_angle(ros_ackermann_drive.steering_angle)
-        # # self.set_target_speed(ros_ackermann_drive.speed)
-        # self.set_target_speed(self.info.current.speed + (ros_ackermann_drive.acceleration*3.6))
-        # self.set_target_accel(ros_ackermann_drive.acceleration)
-        # self.set_target_jerk(ros_ackermann_drive.jerk)
-
         self.set_target_steering_angle(ros_ackermann_drive.CL_phiTargetStrAngle)
         # self.set_target_speed(ros_ackermann_drive.speed)
         
         neg_pos_speed = self.info.current.speed + (ros_ackermann_drive.CL_aTargetLongAcc*3.6)
         self.set_target_speed(numpy.clip(neg_pos_speed, 5/3.6, self.info.restrictions.max_speed))
-
         self.set_target_accel(ros_ackermann_drive.CL_aTargetLongAcc)
         self.set_target_jerk(0.0)
         
@@ -430,15 +388,6 @@ class CarlaAckermannControl(CompatibleNode):
             old = self.info.target.accel
             self.info.target.accel = numpy.clip(target_accel, 
             - self.info.restrictions.max_decel, self.info.restrictions.max_decel)
-
-            # self.info.target.accel = numpy.clip(
-            #     target_accel, -self.info.restrictions.max_decel, self.info.restrictions.max_accel)
-
-            # if self.info.current.speed > 90/3.6:
-            #     self.info.target.accel = numpy.clip(target_accel, -self.info.restrictions.max_decel, 0)
-            #     print('wanted change from {} to {}'.format(target_accel, self.info.target.accel ))
-            # if self.info.current.speed <= 5/3.6:
-            #     self.info.target.accel = numpy.clip(target_accel, 0, self.info.restrictions.max_decel)
             
             delta_to_old = self.info.target.accel - old
             if delta_to_old != 0:
@@ -505,7 +454,6 @@ class CarlaAckermannControl(CompatibleNode):
         """
         Handle stop and switching to reverse gear
         """
-        
 
         # auto-control of hand-brake and reverse gear
         self.info.output.hand_brake = False

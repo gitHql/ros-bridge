@@ -193,13 +193,13 @@ class EgoVehicle(Vehicle):
             self.small_reach_counting = 0
             
         else:
-            if vehicle_status.velocity *3.6 < 50:
+            if vehicle_status.velocity *3.6 < 5:
                 self.small_reach_counting += 1
                 self.big_reached_counting = 0
             pass
             # self.big_reached_counting -= 2
-
-        if self.target > 0 and (self.big_reached_counting > 40 or  vehicle_status.velocity *3.6 > 60 ):
+        big_keep_times, small_keep_times = 60, 60
+        if self.target > 0 and (self.big_reached_counting > big_keep_times or  vehicle_status.velocity *3.6 > 60 ):
             #fall down
             self.big_reached_counting = 0
             self.small_reach_counting = 0
@@ -211,7 +211,7 @@ class EgoVehicle(Vehicle):
 
             print('======================target changed to {}'.format(self.target))
         else:
-            if  self.target < 0 and ( self.small_reach_counting > 40 or  vehicle_status.velocity *3.6 <= 3):
+            if  self.target < 0 and ( self.small_reach_counting > small_keep_times or  vehicle_status.velocity *3.6 <= 3):
                 #rise up
                 self.big_reached_counting = 0
                 self.small_reach_counting = 0
