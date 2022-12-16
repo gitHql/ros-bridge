@@ -137,3 +137,8 @@ class LogicalStatus:
 
     def clean_length(self, imu_hz):
         return 20 * imu_hz
+
+
+    percent_changed_threhold = 0.3
+
+    is_pid_purpose_reached = False

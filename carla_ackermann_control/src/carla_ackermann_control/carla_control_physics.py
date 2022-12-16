@@ -43,7 +43,7 @@ def get_engine_brake_force(_):
     :return: engine braking force [N]
     :rtype: float64
     """
-    return 400.0
+    return 100.0
 
 
 def get_vehicle_mass(vehicle_info):
