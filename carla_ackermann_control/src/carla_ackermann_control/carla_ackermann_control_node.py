@@ -630,56 +630,107 @@ class CarlaAckermannControl(CompatibleNode):
 
         self.logical_status.append_info(self.info)
 
-    def init_accel_pid(self):
+    def init_accel_pid(self, delta_to_old = 0):
         self.accel_controller = PID(Kp=self.get_param("accel_Kp", alternative_value=0.05),
                                     Ki=self.get_param("accel_Ki", alternative_value=0.),
                                     Kd=self.get_param("accel_Kd", alternative_value=0.05),
                                     sample_time=self.control_loop_rate,
                                     output_limits=(-0.2, 0.2))
+
     def reinit_accel_pid(self, delta_to_old=0):
-       
         delta_to_target =  self.info.target.accel - self.info.current.accel
-        percent_need_to_changed_in_max = abs(delta_to_target/(2*self.info.restrictions.max_accel))
-        if percent_need_to_changed_in_max > self.logical_status.percent_changed_threhold:
-            Kp = 0.04
+        if abs(self.info.target.accel - self.info.current.accel) > 1:
+            Kp = 0.06
             if self.info.target.accel < 0:
-                Kp = 0.03
-            if Kp - self.accel_controller.Kp <= 0.0001:
+                Kp -= 0.008
+            if Kp == self.accel_controller.Kp:
                 return
-            
-            print('reinit called')
-            self.logical_status.is_pid_purpose_reached = False
-            self.accel_controller = PID(Kp=Kp,
-                                    Ki=0,
-                                    Kd=0,
-                                    sample_time= self.control_loop_rate,
-                                    output_limits=(-1 if self.info.target.accel < 0 else -0.001, 2 if self.info.target.accel > 0 else 0.001))
-            print('target need delta percent={}, need pid temprary big'.format(percent_need_to_changed_in_max))
-            print('Kp=',Kp, 
-            '\t imu position=', len(self.logical_status.all_imu_accer),
-            '\t target_position', len(self.logical_status.all_pid_accel)  )
-        elif percent_need_to_changed_in_max < self.logical_status.percent_changed_threhold*0.5:
-            if self.logical_status.is_pid_purpose_reached:
-                return
-
-            self.logical_status.is_pid_purpose_reached = True
-            if (self.accel_controller.Kp - self.get_param("accel_Kp", alternative_value=0.05) <= 0.0001):
-                # print('keep pid to normal')
-
-                return
-            print('recover pid to normal,because percent_need_to_changed_in_max=',percent_need_to_changed_in_max,
+            print('++++++++++++++++not enough to positive, Kp=', Kp,
                 '\t imu position=', len(self.logical_status.all_imu_accer),
                 '\t target_position', len(self.logical_status.all_pid_accel)  )
-            print('')
+            
+        elif abs(self.info.target.accel - self.info.current.accel) > 0.5:
+            Kp = 0.05
+            if self.info.target.accel < 0:
+                Kp -= 0.008
+            if Kp == self.accel_controller.Kp:
+                return
+            print('-------------------------------------not enough to nagative, Kp=', Kp,
+                '\t imu position=', len(self.logical_status.all_imu_accer),
+                '\t target_position', len(self.logical_status.all_pid_accel)  )
 
+        else:
             Kp=self.get_param("accel_Kp", alternative_value=0.05)
-            # if self.info.target.accel < 0:
-            #     Kp *= 1.5
-            self.accel_controller = PID(Kp=Kp,
-                                    Ki=self.get_param("accel_Ki", alternative_value=0.),
-                                    Kd=self.get_param("accel_Kd", alternative_value=0.05),
-                                    sample_time=self.control_loop_rate,
-                                    output_limits=(-0.2, 0.2))
+            if self.info.target.accel < 0:
+                Kp =0.06
+            if Kp == self.accel_controller.Kp:
+                return
+            print('////////////////////////////////recover pid to normal, Kp=',Kp,
+                '\t imu position=', len(self.logical_status.all_imu_accer),
+                '\t target_position', len(self.logical_status.all_pid_accel)  )
+
+        self.accel_controller = PID(Kp=Kp,
+            Ki=self.get_param("accel_Ki", alternative_value=0.),
+            Kd=self.get_param("accel_Kd", alternative_value=0.05),
+            sample_time=self.control_loop_rate,
+            output_limits=(-0.2, 0.2))
+
+
+        
+
+    # def reinit_accel_pid(self, delta_to_old=0):
+    #     delta_to_target =  self.info.target.accel - self.info.current.accel
+    #     percent_need_to_changed_in_max = delta_to_target/(2*self.info.restrictions.max_accel)
+    #     if (self.info.target.accel  >= 0 and \
+    #         percent_need_to_changed_in_max > self.logical_status.percent_changed_threhold) \
+    #         or \
+    #             (self.info.target.accel  < 0 and abs(percent_need_to_changed_in_max) < self.logical_status.percent_changed_threhold*0.9) \
+    #         :
+    #         Kp = 0.035
+    #         if self.info.target.accel < 0:
+    #             Kp = 0.028
+    #         if Kp - self.accel_controller.Kp <= 0.0001:
+    #             return
+            
+    #         print('reinit called')
+    #         self.logical_status.is_pid_purpose_reached = False
+    #         self.accel_controller = PID(Kp=Kp,
+    #                                 Ki=0,
+    #                                 Kd=0,
+    #                                 sample_time= self.control_loop_rate,
+    #                                 output_limits=(-1 if self.info.target.accel < 0 else -0.001, 2 if self.info.target.accel > 0 else 0.001))
+    #         print('target need delta percent={}, need pid temprary big'.format(percent_need_to_changed_in_max))
+    #         print('Kp=',Kp, 
+    #         '\t imu position=', len(self.logical_status.all_imu_accer),
+    #         '\t target_position', len(self.logical_status.all_pid_accel)  )
+    #     elif \
+    #         (self.info.target.accel  >= 0 and \
+    #             percent_need_to_changed_in_max < self.logical_status.percent_changed_threhold*0.5)\
+    #                 or \
+    #                     (self.info.target.accel  < 0 and \
+    #                   abs(percent_need_to_changed_in_max) < self.logical_status.percent_changed_threhold*0.9 ) \
+    #                 :
+    #         if self.logical_status.is_pid_purpose_reached:
+    #             return
+
+    #         self.logical_status.is_pid_purpose_reached = True
+    #         if (self.accel_controller.Kp - self.get_param("accel_Kp", alternative_value=0.05) <= 0.0001):
+    #             # print('keep pid to normal')
+
+    #             return
+    #         print('recover pid to normal,because percent_need_to_changed_in_max=',percent_need_to_changed_in_max,
+    #             '\t imu position=', len(self.logical_status.all_imu_accer),
+    #             '\t target_position', len(self.logical_status.all_pid_accel)  )
+    #         print('')
+
+    #         Kp=self.get_param("accel_Kp", alternative_value=0.05)
+    #         # if self.info.target.accel < 0:
+    #         #     Kp *= 1.5
+    #         self.accel_controller = PID(Kp=Kp,
+    #                                 Ki=self.get_param("accel_Ki", alternative_value=0.),
+    #                                 Kd=self.get_param("accel_Kd", alternative_value=0.05),
+    #                                 sample_time=self.control_loop_rate,
+    #                                 output_limits=(-0.2, 0.2))
 
     # from ego vehicle
     def send_ego_vehicle_control_info_msg(self):
@@ -710,11 +761,11 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.current.speed_abs = abs(current_speed)
     
     def set_current_accel(self, current_accel):
-        current_accel = numpy.clip(current_accel, -3.7, 3.7)
+        current_accel = numpy.clip(current_accel, -37, 3.7)
 
         self.info.current.accel = current_accel 
-
-        self.reinit_accel_pid(0)
+        if not self.logical_status.in_cold_starting:
+            self.reinit_accel_pid(0)
             
     def run(self):
         """

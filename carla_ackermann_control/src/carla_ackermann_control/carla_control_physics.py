@@ -258,6 +258,6 @@ def get_vehicle_max_deceleration(_):
     :return: maximum deceleration [m/s^2 > 0]
     :rtype: float64
     """
-    max_deceleration = 10.0
+    max_deceleration = 7.2  #140放掉油门的减速度
 
     return max_deceleration
