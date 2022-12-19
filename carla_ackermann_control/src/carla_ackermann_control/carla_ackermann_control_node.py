@@ -518,7 +518,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.accel_controller.setpoint =  self.info.target.accel 
 
         self.info.status.accel_control_pedal_delta = float(self.accel_controller(
-            self.info.current.accel)) * 2
+            self.info.current.accel)) * 1.5
             #/  self.accel_controller.setpoint   #除以目标值是为了调整为油门百分比
 
         # self.info.status.accel_control_pedal_delta  = numpy.clip(self.info.status.accel_control_pedal_delta, -0.8, 0.8)
@@ -646,6 +646,8 @@ class CarlaAckermannControl(CompatibleNode):
         if abs(self.info.target.accel - self.info.current.accel) > 0.5:
             # Kp = min(1.0, abs(delta_to_target)/6.7)
             Kp = 0.029
+            # if self.info.target.accel < 0:
+            #     Kp *= 2
             if Kp == self.accel_controller.Kp:
                 print('====================', len(self.logical_status.all_imu_accer), abs(self.info.target.accel  - self.info.current.accel) )
                 return
@@ -678,8 +680,8 @@ class CarlaAckermannControl(CompatibleNode):
 
         else:
             Kp=self.get_param("accel_Kp", alternative_value=0.05)
-            # if self.info.target.accel < 0:
-            #     Kp *= 2
+            if self.info.target.accel < 0:
+                Kp *= 2
             if Kp == self.accel_controller.Kp:
                 return
             print('////////////////////////////////recover pid to normal, Kp=',Kp,  abs(self.info.target.accel  - self.info.current.accel),
@@ -688,9 +690,9 @@ class CarlaAckermannControl(CompatibleNode):
         
         if self.info.target.accel * self.info.status.accel_control_pedal_target < 0:
             if self.info.target.accel > 0:
-                self.info.status.accel_control_pedal_target = self.info.target.accel/4
-            else:
-                self.info.status.accel_control_pedal_target = 0
+                self.info.status.accel_control_pedal_target = self.info.target.accel/10
+            # else:
+            #     self.info.status.accel_control_pedal_target /= 10
 
         self.accel_controller = PID(Kp=Kp,
             Ki=self.get_param("accel_Ki", alternative_value=0.),

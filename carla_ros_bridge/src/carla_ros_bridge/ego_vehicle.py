@@ -198,12 +198,15 @@ class EgoVehicle(Vehicle):
                 self.big_reached_counting = 0
             pass
             # self.big_reached_counting -= 2
+        
+
+
         big_keep_times, small_keep_times =30, 30
         if self.target > 0 and (self.big_reached_counting > big_keep_times or  vehicle_status.velocity *3.6 > 90 ):
             #fall down
             self.big_reached_counting = 0
             self.small_reach_counting = 0
-            start, end = -self.PID_MAX_TARGET, -1.2
+            start, end = -self.PID_MAX_TARGET, -0.2
 
             self.target = round(uniform(start, end), 1)
             self.target = random.choice([i for i in  np.arange(start, end, 0.4)])
@@ -215,7 +218,7 @@ class EgoVehicle(Vehicle):
                 #rise up
                 self.big_reached_counting = 0
                 self.small_reach_counting = 0
-                start, end = 1.2, self.PID_MAX_TARGET
+                start, end = 0.2, self.PID_MAX_TARGET
 
                 self.target = round(uniform(start, end), 1)
                 self.target = random.choice([i for i in np.arange(start, end, 0.4)])
@@ -303,6 +306,7 @@ class EgoVehicle(Vehicle):
         :type ros_vehicle_control: carla_msgs.msg.CarlaEgoVehicleControl
         :return:
         """
+        
         if manual_override == self.vehicle_control_override:
             vehicle_control = VehicleControl()
             vehicle_control.hand_brake = ros_vehicle_control.hand_brake
@@ -312,7 +316,6 @@ class EgoVehicle(Vehicle):
             vehicle_control.reverse = ros_vehicle_control.reverse
             vehicle_control.manual_gear_shift = ros_vehicle_control.manual_gear_shift
             vehicle_control.gear = ros_vehicle_control.gear
-
             self.carla_actor.apply_control(vehicle_control)
             self._vehicle_control_applied_callback(self.get_id())
 

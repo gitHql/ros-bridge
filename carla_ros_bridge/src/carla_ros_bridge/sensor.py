@@ -254,7 +254,7 @@ class Sensor(Actor):
         self.skep_times -= 1
         if self.skep_times < 0:
             import time
-            time.sleep(0.1)
+            # time.sleep(0.1)
         if self.synchronous_mode:
             if self.is_event_sensor:
                 # print('event', timestamp)
