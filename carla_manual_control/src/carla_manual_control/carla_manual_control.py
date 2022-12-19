@@ -423,7 +423,7 @@ class HUD(object):
         #1.实测数值，超过地图区域的该位置后，就难以控制 
         #2.撞墙
         #3.掉悬崖了
-        if self.y < -180 \
+        if self.y < -55555 \
             or \
                 ( abs(self.vehicle_status.acceleration.linear.y) <= 0.01 \
             and self.vehicle_status.control.throttle == 1 \
@@ -437,8 +437,6 @@ class HUD(object):
             pose.position.y = -50
 
             self.change_location.publish(pose)
-
-
 
             pose = data.pose.pose
             # print('new pose ', data)

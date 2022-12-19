@@ -249,8 +249,12 @@ class Sensor(Actor):
                             self.__class__.__name__, self.get_id(), frame))
                     return
 
+    skep_times = 0
     def update(self, frame, timestamp):
-        
+        self.skep_times -= 1
+        if self.skep_times < 0:
+            import time
+            time.sleep(0.1)
         if self.synchronous_mode:
             if self.is_event_sensor:
                 # print('event', timestamp)

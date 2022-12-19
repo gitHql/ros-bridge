@@ -407,6 +407,8 @@ class CarlaAckermannControl(CompatibleNode):
             # received in the last second (e.g. to allows manually controlling the vehicle)
             if True or (self.last_ackermann_msg_received_sec + 1.0) >  self.get_time():
                 self.info.output.header = self.get_msg_header()
+                import time 
+                # time.sleep(0.2)
                 self.carla_control_publisher.publish(self.info.output)
 
     def control_steering(self):
@@ -516,7 +518,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.accel_controller.setpoint =  self.info.target.accel 
 
         self.info.status.accel_control_pedal_delta = float(self.accel_controller(
-            self.info.current.accel))
+            self.info.current.accel)) * 2
             #/  self.accel_controller.setpoint   #除以目标值是为了调整为油门百分比
 
         # self.info.status.accel_control_pedal_delta  = numpy.clip(self.info.status.accel_control_pedal_delta, -0.8, 0.8)
@@ -549,7 +551,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.status.brake_upper_border = self.info.status.throttle_lower_border + \
             phys.get_vehicle_lay_off_engine_acceleration(self.vehicle_info)
 
-        if  self.info.current.speed_abs <= self.logical_status.full_stop_speed_epsilon \
+        if True and  self.info.current.speed_abs <= self.logical_status.full_stop_speed_epsilon \
             and self.info.target.accel >= 0.1: #ignored backward
             self.logical_status.in_cold_starting = True
             self.logical_status.cold_counter += 1
@@ -636,44 +638,67 @@ class CarlaAckermannControl(CompatibleNode):
                                     Kd=self.get_param("accel_Kd", alternative_value=0.05),
                                     sample_time=self.control_loop_rate,
                                     output_limits=(-0.2, 0.2))
+   
+    keep_last_change_count = 5
 
     def reinit_accel_pid(self, delta_to_old=0):
-        delta_to_target =  self.info.target.accel - self.info.current.accel
-        if abs(self.info.target.accel - self.info.current.accel) > 1:
-            Kp = 0.06
-            if self.info.target.accel < 0:
-                Kp -= 0.008
+        delta_to_target = round(self.info.target.accel - self.info.current.accel, 3)
+        if abs(self.info.target.accel - self.info.current.accel) > 0.5:
+            # Kp = min(1.0, abs(delta_to_target)/6.7)
+            Kp = 0.029
             if Kp == self.accel_controller.Kp:
+                print('====================', len(self.logical_status.all_imu_accer), abs(self.info.target.accel  - self.info.current.accel) )
                 return
-            print('++++++++++++++++not enough to positive, Kp=', Kp,
+            
+            print('++++++++++++++++far, Kp=', Kp,
                 '\t imu position=', len(self.logical_status.all_imu_accer),
                 '\t target_position', len(self.logical_status.all_pid_accel)  )
             
-        elif abs(self.info.target.accel - self.info.current.accel) > 0.5:
-            Kp = 0.05
-            if self.info.target.accel < 0:
-                Kp -= 0.008
+            # if Kp != self.accel_controller.Kp and self.keep_last_change_count < 5:
+            #     print('keep last changed', self.keep_last_change_count, '\tself.accel_controller.Kp ', self.accel_controller.Kp )
+            #     self.keep_last_change_count += 1
+            #     return 
+
+        elif abs(self.info.target.accel - self.info.current.accel) > (0.2 if self.info.target.accel < 0 else 0.1):
+            Kp = 0.027
+            # if self.info.target.accel < 0:
+            #     Kp *= 2
             if Kp == self.accel_controller.Kp:
+                print('________', len(self.logical_status.all_imu_accer), abs(self.info.target.accel  - self.info.current.accel))
                 return
-            print('-------------------------------------not enough to nagative, Kp=', Kp,
+
+            print('-------------------------------------near , Kp=', Kp,
                 '\t imu position=', len(self.logical_status.all_imu_accer),
                 '\t target_position', len(self.logical_status.all_pid_accel)  )
 
+            # if Kp != self.accel_controller.Kp and self.keep_last_change_count < 5:
+            #     print('keep last changed', self.keep_last_change_count, '\tself.accel_controller.Kp ', self.accel_controller.Kp )
+            #     self.keep_last_change_count += 1
+            #     return 
+
         else:
             Kp=self.get_param("accel_Kp", alternative_value=0.05)
-            if self.info.target.accel < 0:
-                Kp =0.06
+            # if self.info.target.accel < 0:
+            #     Kp *= 2
             if Kp == self.accel_controller.Kp:
                 return
-            print('////////////////////////////////recover pid to normal, Kp=',Kp,
+            print('////////////////////////////////recover pid to normal, Kp=',Kp,  abs(self.info.target.accel  - self.info.current.accel),
                 '\t imu position=', len(self.logical_status.all_imu_accer),
                 '\t target_position', len(self.logical_status.all_pid_accel)  )
+        
+        if self.info.target.accel * self.info.status.accel_control_pedal_target < 0:
+            if self.info.target.accel > 0:
+                self.info.status.accel_control_pedal_target = self.info.target.accel/4
+            else:
+                self.info.status.accel_control_pedal_target = 0
 
         self.accel_controller = PID(Kp=Kp,
             Ki=self.get_param("accel_Ki", alternative_value=0.),
             Kd=self.get_param("accel_Kd", alternative_value=0.05),
             sample_time=self.control_loop_rate,
-            output_limits=(-0.2, 0.2))
+            output_limits=(-0.005, 0.005) if abs(delta_to_target) <= 0.2 else (0-0.5, 0.5)
+            )
+        self.keep_last_change_count = 0
 
 
         

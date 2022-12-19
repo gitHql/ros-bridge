@@ -43,7 +43,7 @@ def get_engine_brake_force(_):
     :return: engine braking force [N]
     :rtype: float64
     """
-    return 100.0
+    return 50
 
 
 def get_vehicle_mass(vehicle_info):
@@ -98,7 +98,7 @@ def get_vehicle_driving_impedance_acceleration(vehicle_info, vehicle_status, rev
     # if vehicle_status.velocity*3.6 < 20:
     #     return -0.07
     # else:
-    return deceleration
+    return deceleration 
 
 
 def get_rolling_resistance_force(vehicle_info):

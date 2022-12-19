@@ -136,7 +136,7 @@ class LogicalStatus:
             self.clean_plot()
 
     def clean_length(self, imu_hz):
-        return 30 * imu_hz
+        return 2 * imu_hz
 
 
     percent_changed_threhold = 0.3

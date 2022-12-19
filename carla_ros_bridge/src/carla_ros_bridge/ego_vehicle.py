@@ -188,7 +188,7 @@ class EgoVehicle(Vehicle):
         from random import uniform
         #velocity  数值单位是m/(s**2)
         
-        if vehicle_status.velocity * 3.6 > 40:
+        if vehicle_status.velocity * 3.6 > 30:
             self.big_reached_counting += 1
             self.small_reach_counting = 0
             
@@ -198,12 +198,12 @@ class EgoVehicle(Vehicle):
                 self.big_reached_counting = 0
             pass
             # self.big_reached_counting -= 2
-        big_keep_times, small_keep_times =50, 50
+        big_keep_times, small_keep_times =30, 30
         if self.target > 0 and (self.big_reached_counting > big_keep_times or  vehicle_status.velocity *3.6 > 90 ):
             #fall down
             self.big_reached_counting = 0
             self.small_reach_counting = 0
-            start, end = -self.PID_MAX_TARGET, -0.2
+            start, end = -self.PID_MAX_TARGET, -1.2
 
             self.target = round(uniform(start, end), 1)
             self.target = random.choice([i for i in  np.arange(start, end, 0.4)])
@@ -215,7 +215,7 @@ class EgoVehicle(Vehicle):
                 #rise up
                 self.big_reached_counting = 0
                 self.small_reach_counting = 0
-                start, end = 0.2, self.PID_MAX_TARGET
+                start, end = 1.2, self.PID_MAX_TARGET
 
                 self.target = round(uniform(start, end), 1)
                 self.target = random.choice([i for i in np.arange(start, end, 0.4)])
