@@ -105,6 +105,14 @@ class Sensor(Actor):
             self._tf_broadcaster = tf2_ros.TransformBroadcaster()
         elif ROS_VERSION == 2:
             self._tf_broadcaster = tf2_ros.TransformBroadcaster(node)
+        print('name====================================', name,  node)
+        from std_msgs.msg import Float32
+        self.vehicle_status_subscriber = node.new_subscription(
+            Float32,
+            "/carla/" + 'sensors' + "/delay_time",
+            self.sleep_time_update,
+           qos_profile=10
+        )
 
     def get_ros_transform(self, pose, timestamp):
         if self.synchronous_mode:
@@ -222,7 +230,6 @@ class Sensor(Actor):
                 return
 
     def _update_synchronous_sensor(self, frame, timestamp):
-       
         while not self.next_data_expected_time or \
             (not self.queue.empty() or
              self.next_data_expected_time and
@@ -249,12 +256,14 @@ class Sensor(Actor):
                             self.__class__.__name__, self.get_id(), frame))
                     return
 
-    skep_times = 0
+    sleep_time = 0
+    def sleep_time_update(self, new_delay):
+        self.sleep_time = new_delay.data
+        print('>>>>>>>>>>>>>>>>>>new delay', self.sleep_time)
+
     def update(self, frame, timestamp):
-        self.skep_times -= 1
-        if self.skep_times < 0:
-            import time
-            # time.sleep(0.1)
+        import time
+        time.sleep(self.sleep_time)
         if self.synchronous_mode:
             if self.is_event_sensor:
                 # print('event', timestamp)

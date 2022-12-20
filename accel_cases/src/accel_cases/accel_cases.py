@@ -51,50 +51,52 @@ class TestBaseOnSpeed(CompatibleNode):
             self.choce_target_by_speed_reach_milestones(vehicle_status)
         else:
             self.choce_target_by_slowdown_speed_reach_milestones(vehicle_status)
-
+        print(self.target)
         self.angle = 0.0
         self.publish_cl_control()
+
     switch_to_positive = True
 
     def choce_target_by_speed_reach_milestones(self, vehicle_status:CarlaEgoVehicleStatus):
+        def delta(next_speed_kph):
+            return  (  (vehicle_status.velocity * 3.6 ) - next_speed_kph) / 20 
+        if vehicle_status.velocity * 3.6 >= 0:
+            self.target = delta(0)
         if vehicle_status.velocity * 3.6 >= 10:
-            self.target = 1
+            self.target = 2  + delta(10)
         if vehicle_status.velocity * 3.6 >= 30:
-            self.target = 2 + vehicle_status.velocity * 3.6 / 50 
+            self.target = 3 + delta(30)
         if vehicle_status.velocity * 3.6 >= 50:
-                    self.target = 3 + vehicle_status.velocity * 3.6 / 70 
+            self.target = 2 + delta(50)
         if vehicle_status.velocity * 3.6 >= 70:
-            self.target = 2 + vehicle_status.velocity * 3.6 / 90 
-            self.switch_to_positive = False
+            self.target = 1 + delta(70)
+            # self.switch_to_positive = False
 
         if vehicle_status.velocity * 3.6 >= 90:
-            self.target = 1 + vehicle_status.velocity * 3.6 / 110 
-        if vehicle_status.velocity *3.6 >= 110:
-            self.target = 0.5 + vehicle_status.velocity * 3.6 / 150 
-        if vehicle_status.velocity *3.6 >= 150:
+            self.target = 0
             self.switch_to_positive = False
-            
        
     def choce_target_by_slowdown_speed_reach_milestones(self, vehicle_status:CarlaEgoVehicleStatus):
-        if vehicle_status.velocity * 3.6 < 10:
+        if vehicle_status.velocity * 3.6 < 5:
             self.target = 1
             self.switch_to_positive = True
             return
 
         if vehicle_status.velocity * 3.6 >= 10:
-            self.target = -1
-        if vehicle_status.velocity * 3.6 >= 30:
-            self.target = -2
-        if vehicle_status.velocity * 3.6 >= 50:
-            self.target = -3
-        if vehicle_status.velocity * 3.6 >= 70:
-            self.target = -4
-        if vehicle_status.velocity * 3.6 >= 90:
+        #     self.target = -6 + vehicle_status.velocity * 3.6 / 30 
+        # if vehicle_status.velocity * 3.6 >= 30:
+        #     self.target = -5 + vehicle_status.velocity * 3.6 / 50 
+        # if vehicle_status.velocity * 3.6 >= 50:
+        #     self.target = -4 + vehicle_status.velocity * 3.6 / 70 
+        # if vehicle_status.velocity * 3.6 >= 70:
+        #     self.target = -3 + vehicle_status.velocity * 3.6 / 90
+        # if vehicle_status.velocity * 3.6 >= 90:
+        #     self.target = -2 + vehicle_status.velocity * 3.6 / 110 
+        # if vehicle_status.velocity *3.6 >= 110:
+        #     self.target = -1
+        # if vehicle_status.velocity *3.6 >= 130:
             self.target = -5
-        if vehicle_status.velocity *3.6 >= 110:
-            self.target = -6
         
-
     def choice_target(self, vehicle_status:CarlaEgoVehicleStatus):
         if vehicle_status.velocity * 3.6 > 20:
             self.big_reached_counting += 1
@@ -129,7 +131,7 @@ class TestBaseOnSpeed(CompatibleNode):
                 print('======================target changed to {}'.format(self.target))
             pass
 
-    PID_MAX_TARGET = 3
+    PID_MAX_TARGET = 3.7
     target = 1
     angle = 0.0
     big_reached_counting = 0

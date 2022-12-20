@@ -29,8 +29,8 @@ def plot_pid_imureal(pedal_history, pid_val, real_val,  \
     zero =  [0 for val in pid_val]
     a , = plt.plot(zero,  linestyle='dotted', marker='', label='zero')
 
-    leg = plt.legend(loc='upper right', prop={'size': 6})
-    # leg = plt.legend(loc='lower right', prop={'size': 6})
+    leg = plt.legend(loc='lower left', prop={'size': 6})
+    # leg = plt.legend(loc='upper right', prop={'size': 6})
 
     plt.show()
     plt.pause(0.01)
@@ -100,6 +100,9 @@ class LogicalStatus:
         self.throttle_lower_borders.append(info.output.throttle )
 
     def make_plt(self, info:EgoVehicleControlInfo,  control_loop_rate:int, accel_controller):
+        if self.dont_display:
+            return
+        
         _, = plt.plot([], label='accel_control_pedal_target.{}'.format(
             round(info.status.accel_control_pedal_target, 3)))
 
@@ -136,8 +139,12 @@ class LogicalStatus:
             self.clean_plot()
 
     def clean_length(self, imu_hz):
-        return 10 * imu_hz
+        return 6 * imu_hz
 
     percent_changed_threhold = 0.3
 
     is_pid_purpose_reached = False
+
+    dont_display = False
+    def stop_plt(self):
+        self.dont_display = True

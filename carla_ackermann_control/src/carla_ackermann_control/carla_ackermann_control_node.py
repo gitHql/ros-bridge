@@ -576,7 +576,7 @@ class CarlaAckermannControl(CompatibleNode):
                 throttle_alpha = 1
                 for i in range(len(ranges)):
                     if self.info.target.accel >= ranges[i]:
-                        throttle_alpha = i
+                        throttle_alpha = i+1
                         break
                 self.info.output.throttle = 1/throttle_alpha
                 print('started success>>>>>>>>>>>>>>>>>>>>>>>>>', self.info.output.throttle )
@@ -643,13 +643,13 @@ class CarlaAckermannControl(CompatibleNode):
 
     def reinit_accel_pid(self, delta_to_old=0):
         delta_to_target = round(self.info.target.accel - self.info.current.accel, 3)
-        if abs(self.info.target.accel - self.info.current.accel) > 0.5:
+        if abs(self.info.target.accel - self.info.current.accel) > 0.7:
             # Kp = min(1.0, abs(delta_to_target)/6.7)
-            Kp = 0.029
+            Kp = 0.02
             # if self.info.target.accel < 0:
             #     Kp *= 2
             if Kp == self.accel_controller.Kp:
-                print('====================', len(self.logical_status.all_imu_accer), abs(self.info.target.accel  - self.info.current.accel) )
+                print('====================far', len(self.logical_status.all_imu_accer), abs(self.info.target.accel  - self.info.current.accel) )
                 return
             
             print('++++++++++++++++far, Kp=', Kp,
@@ -661,12 +661,12 @@ class CarlaAckermannControl(CompatibleNode):
             #     self.keep_last_change_count += 1
             #     return 
 
-        elif abs(self.info.target.accel - self.info.current.accel) > (0.2 if self.info.target.accel < 0 else 0.1):
-            Kp = 0.027
+        elif abs(self.info.target.accel - self.info.current.accel) > (0.5 if self.info.target.accel < 0 else 0.3):
+            Kp = 0.015
             # if self.info.target.accel < 0:
             #     Kp *= 2
             if Kp == self.accel_controller.Kp:
-                print('________', len(self.logical_status.all_imu_accer), abs(self.info.target.accel  - self.info.current.accel))
+                print('________near', len(self.logical_status.all_imu_accer), abs(self.info.target.accel  - self.info.current.accel))
                 return
 
             print('-------------------------------------near , Kp=', Kp,
@@ -690,15 +690,15 @@ class CarlaAckermannControl(CompatibleNode):
         
         if self.info.target.accel * self.info.status.accel_control_pedal_target < 0:
             if self.info.target.accel > 0:
-                self.info.status.accel_control_pedal_target = self.info.target.accel/10
-            # else:
-            #     self.info.status.accel_control_pedal_target /= 10
+                self.info.status.accel_control_pedal_target = 0
+            else:
+                self.info.status.accel_control_pedal_target = 0
 
         self.accel_controller = PID(Kp=Kp,
             Ki=self.get_param("accel_Ki", alternative_value=0.),
             Kd=self.get_param("accel_Kd", alternative_value=0.05),
             sample_time=self.control_loop_rate,
-            output_limits=(-0.005, 0.005) if abs(delta_to_target) <= 0.2 else (0-0.5, 0.5)
+            output_limits=(-0.5, 0.5) if abs(delta_to_target) <= 0.4 else (0-0.5, 0.5)
             )
         self.keep_last_change_count = 0
 
@@ -802,14 +802,18 @@ class CarlaAckermannControl(CompatibleNode):
         import sys, signal
         def signal_handler(signal, frame):
             print("\nprogram exiting gracefully")
+            self.logical_status.stop_plt()
             sys.exit(0)
 
         signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
 
         while(True):
             self.logical_status.make_plt(self.info, self.control_loop_rate, self.accel_controller)
             import rospy
-            rospy.sleep(0.05)
+            # rospy.sleep(0.05)
+            import time
+            time.sleep(0.05)
 
 def main(args=None):
     roscomp.init("carla_ackermann_control", args=args)
