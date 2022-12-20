@@ -19,7 +19,6 @@ from ros_compatibility.qos import QoSProfile, DurabilityPolicy
 
 from carla_ros_bridge.vehicle import Vehicle
 
-from demo_msgs.msg import CL_VehicleCommand
 
 from carla_msgs.msg import (
     CarlaEgoVehicleInfo,
@@ -67,9 +66,6 @@ class EgoVehicle(Vehicle):
             self.get_topic_prefix() + "/vehicle_status",
             qos_profile=10)
 
-        self.control_publisher = node.new_publisher(CL_VehicleCommand,  
-            "/carla/ego_vehicle/ackermann_cmd", 
-            qos_profile=10)
 
         self.vehicle_info_publisher = node.new_publisher(
             CarlaEgoVehicleInfo,
@@ -183,78 +179,6 @@ class EgoVehicle(Vehicle):
             vehicle_info.center_of_mass.z = vehicle_physics.center_of_mass.z
 
             self.vehicle_info_publisher.publish(vehicle_info)
-
-        import random, numpy as np
-        from random import uniform
-        #velocity  数值单位是m/(s**2)
-        
-        if vehicle_status.velocity * 3.6 > 30:
-            self.big_reached_counting += 1
-            self.small_reach_counting = 0
-            
-        else:
-            if vehicle_status.velocity *3.6 < 10:
-                self.small_reach_counting += 1
-                self.big_reached_counting = 0
-            pass
-            # self.big_reached_counting -= 2
-        
-
-
-        big_keep_times, small_keep_times =30, 30
-        if self.target > 0 and (self.big_reached_counting > big_keep_times or  vehicle_status.velocity *3.6 > 90 ):
-            #fall down
-            self.big_reached_counting = 0
-            self.small_reach_counting = 0
-            start, end = -self.PID_MAX_TARGET, -0.2
-
-            self.target = round(uniform(start, end), 1)
-            self.target = random.choice([i for i in  np.arange(start, end, 0.4)])
-            self.angle = 0.0
-
-            print('======================target changed to {}'.format(self.target))
-        else:
-            if  self.target < 0 and (  self.small_reach_counting > small_keep_times  or  vehicle_status.velocity *3.6 <= 3):
-                #rise up
-                self.big_reached_counting = 0
-                self.small_reach_counting = 0
-                start, end = 0.2, self.PID_MAX_TARGET
-
-                self.target = round(uniform(start, end), 1)
-                self.target = random.choice([i for i in np.arange(start, end, 0.4)])
-                self.angle = 0.0
-
-                print('======================target changed to {}'.format(self.target))
-            pass
-
-        self.publish_cl_control()
-
-    PID_MAX_TARGET = 3
-    target = 1
-    angle = 0.0
-    big_reached_counting = 0
-    small_reach_counting  = 0
-
-    def publish_cl_control(self):
-        import numpy
-        self.target = numpy.clip(self.target, -self.PID_MAX_TARGET, self.PID_MAX_TARGET)
-        msg = CL_VehicleCommand()
-        msg.header.seq = 1 
-        # msg.stamp = 0
-        # msg.frame_id= 'ssss'
-        msg.CL_stSysSts= 1
-        msg.CL_flgAccelEnable= True
-        msg.CL_flgStrWhlEnable= False
-        msg.CL_nStrWhlSpeed= 0
-        msg.CL_flgGearEnable= False
-        msg.CL_flgLeftTurnLight= 1
-        msg.CL_flgRightTurnLight= 1
-        msg.CL_phiTargetStrAngle= self.angle
-
-        msg.CL_gearTargetGear= 0
-        msg.CL_aTargetLongAcc= self.target
-
-        self.control_publisher.publish(msg)
 
     def update(self, frame, timestamp):
         """

@@ -423,7 +423,7 @@ class HUD(object):
         #1.实测数值，超过地图区域的该位置后，就难以控制 
         #2.撞墙
         #3.掉悬崖了
-        if self.y < -55555 \
+        if self.y < -180 \
             or \
                 ( abs(self.vehicle_status.acceleration.linear.y) <= 0.01 \
             and self.vehicle_status.control.throttle == 1 \

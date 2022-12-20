@@ -240,7 +240,7 @@ class CarlaAckermannControl(CompatibleNode):
         #imu direct value
         #从静止到启动的瞬时加速度巨大, 直接剪切裁剪到目标加速度，使得PID回归
 
-        accel = numpy.clip(cord.x, -3.7, 3.7)
+        accel = numpy.clip(cord.x, -6.7, 3.7)
         # accel = numpy.clip(world_x, -3.7, 3.7)
         # self.set_current_accel(accel)
 
@@ -788,7 +788,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.current.speed_abs = abs(current_speed)
     
     def set_current_accel(self, current_accel):
-        current_accel = numpy.clip(current_accel, -37, 3.7)
+        current_accel = numpy.clip(current_accel, -6.7, 3.7)
 
         self.info.current.accel = current_accel 
         if not self.logical_status.in_cold_starting:
