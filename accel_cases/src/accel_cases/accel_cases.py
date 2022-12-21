@@ -21,7 +21,34 @@ from sensor_msgs.msg import Imu
 from carla_msgs.msg import CarlaEgoVehicleStatus  # pylint: disable=no-name-in-module,import-error
 import random, numpy as np
 from random import uniform, choice
+import pygame
 
+try:
+    import pygame
+    from pygame.locals import KMOD_CTRL
+    from pygame.locals import KMOD_SHIFT
+    from pygame.locals import K_COMMA
+    from pygame.locals import K_DOWN
+    from pygame.locals import K_ESCAPE
+    from pygame.locals import K_F1
+    from pygame.locals import K_LEFT
+    from pygame.locals import K_PERIOD
+    from pygame.locals import K_RIGHT
+    from pygame.locals import K_SLASH
+    from pygame.locals import K_SPACE
+    from pygame.locals import K_UP
+    from pygame.locals import K_a
+    from pygame.locals import K_d
+    from pygame.locals import K_h
+    from pygame.locals import K_m
+    from pygame.locals import K_p
+    from pygame.locals import K_q
+    from pygame.locals import K_s
+    from pygame.locals import K_w
+    from pygame.locals import K_b
+    from pygame.locals import K_F1, K_F2, K_F3,K_F4,K_F5,K_F6,K_F7,K_F8,K_F9,K_F10,K_F11, K_F12
+except ImportError:
+    raise RuntimeError('cannot import pygame, make sure pygame package is installed')
 
 from demo_msgs.msg import CL_VehicleCommand
 
@@ -46,14 +73,15 @@ class TestBaseOnSpeed(CompatibleNode):
 
     def vehicle_status_updated(self, vehicle_status):
         self.vehicle_status = vehicle_status
-        
-        if self.switch_to_positive:
-            self.choce_target_by_speed_reach_milestones(vehicle_status)
-        else:
-            self.choce_target_by_slowdown_speed_reach_milestones(vehicle_status)
-        print(self.target)
         self.angle = 0.0
-        self.publish_cl_control()
+
+        # if self.switch_to_positive:
+        #     self.choce_target_by_speed_reach_milestones(vehicle_status)
+        # else:
+        #     self.choce_target_by_slowdown_speed_reach_milestones(vehicle_status)
+        
+        
+        # self.publish_cl_control()
 
     switch_to_positive = True
 
@@ -120,7 +148,7 @@ class TestBaseOnSpeed(CompatibleNode):
             self.target = choice([i for i in  np.arange(start, end, 0.4)])
             print('======================target changed to {}'.format(self.target))
         else:
-            if  self.target < 0 and (  s55555elf.small_reach_counting > small_keep_times  or  vehicle_status.velocity *3.6 <= 3):
+            if  self.target < 0 and (  self.small_reach_counting > small_keep_times  or  vehicle_status.velocity *3.6 <= 3):
                 #rise up
                 self.big_reached_counting = 0
                 self.small_reach_counting = 0
@@ -137,7 +165,57 @@ class TestBaseOnSpeed(CompatibleNode):
     big_reached_counting = 0
     small_reach_counting  = 0
 
+    @staticmethod
+    def _is_quit_shortcut(key):
+        return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
+
+    def parse_event(self):
+        has_event = False
+        for event in pygame.event.get():
+            
+           
+            if event.type == pygame.QUIT:
+                return True
+            elif event.type == pygame.KEYUP:
+                has_event = True
+                if self._is_quit_shortcut(event.key):
+                    return True
+                elif event.key == K_F1:
+                    self.target = -6
+                elif event.key == K_F2:
+                    self.target = -5
+                elif event.key == K_F3:
+                    self.target = -4
+                elif event.key == K_F4:
+                    self.target = -3
+                elif event.key == K_F5:
+                    self.target = -2
+                elif event.key == K_F6:
+                    self.target = -1
+                elif event.key == K_F7:
+                    self.target = 0
+                elif event.key == K_F8:
+                    self.target = 1
+                elif event.key == K_F9:
+                    self.target = 2
+                elif event.key == K_F10:
+                    self.target = 3
+                elif event.key == K_F11:
+                    self.target = 3.7
+                elif event.key == K_DOWN:
+                    self.target -= 0.5
+                elif event.key == K_UP:
+                    self.target += 0.5
+                elif event.key == K_LEFT:
+                    self.target -= 0.1
+                elif event.key == K_RIGHT:
+                    self.target += 0.1
+                    
+                self.target = np.clip(self.target, -7.2, 3.7)
+                self.publish_cl_control()
+
     def publish_cl_control(self):
+        print('will send accel {} angle {} '.format(self.target, self.angle))
         import numpy
         self.target = numpy.clip(self.target, -2*self.PID_MAX_TARGET, self.PID_MAX_TARGET)
         msg = CL_VehicleCommand()
@@ -237,24 +315,35 @@ class TestBaseOnSpeed(CompatibleNode):
         Control loop
         :return:
         """
-        import sys, signal
-        def signal_handler(signal, frame):
-            print("\nprogram exiting gracefully")
-            sys.exit(0)
 
-        signal.signal(signal.SIGINT, signal_handler)
 
-        while(True):
-            # print('+')
-            import rospy
-            rospy.sleep(0.05)
+        return self.parse_event()
+
 
 def main(args=None):
     roscomp.init("carla_ackermann_contro_casesl", args=args)
+    
+    pygame.init()
+    pygame.font.init()
+    pygame.display.set_caption("accel changer")
+    clock = pygame.time.Clock()
+
+    import sys, signal
+    def signal_handler(signal, frame):
+        print("\nprogram exiting gracefully")
+        sys.exit(0)
+    signal.signal(signal.SIGINT, signal_handler)
 
     try:
         controller = TestBaseOnSpeed()
-        controller.run()
+        display = pygame.display.set_mode((400,300),
+                                          pygame.HWSURFACE | pygame.DOUBLEBUF)
+
+        while roscomp.ok():
+            clock.tick_busy_loop(200)
+            if controller.run():
+                return
+            pygame.display.flip()
     except KeyboardInterrupt:
         pass
     finally:

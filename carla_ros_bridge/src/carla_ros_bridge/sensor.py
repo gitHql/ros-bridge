@@ -105,7 +105,7 @@ class Sensor(Actor):
             self._tf_broadcaster = tf2_ros.TransformBroadcaster()
         elif ROS_VERSION == 2:
             self._tf_broadcaster = tf2_ros.TransformBroadcaster(node)
-        print('name====================================', name,  node)
+
         from std_msgs.msg import Float32
         self.vehicle_status_subscriber = node.new_subscription(
             Float32,
