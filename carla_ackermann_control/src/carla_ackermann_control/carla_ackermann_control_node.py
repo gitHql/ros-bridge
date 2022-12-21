@@ -524,7 +524,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.accel_controller.setpoint =  self.info.target.accel 
 
         self.info.status.accel_control_pedal_delta = float(self.accel_controller(
-            self.info.current.accel)) *2
+            self.info.current.accel))
 
             #/  self.accel_controller.setpoint   #除以目标值是为了调整为油门百分比
 
@@ -558,7 +558,7 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.status.brake_upper_border = self.info.status.throttle_lower_border + \
             phys.get_vehicle_lay_off_engine_acceleration(self.vehicle_info)
 
-        if True and  self.info.current.speed_abs <= self.logical_status.full_stop_speed_epsilon \
+        if False and  self.info.current.speed_abs <= self.logical_status.full_stop_speed_epsilon \
             and self.info.target.accel >= 0.1: #ignored backward
             self.logical_status.in_cold_starting = True
             self.logical_status.cold_counter += 1

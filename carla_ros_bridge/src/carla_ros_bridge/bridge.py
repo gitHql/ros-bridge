@@ -402,8 +402,6 @@ class CarlaRosBridge(CompatibleNode):
         """
         if roscomp.ok():
             self.ros_timestamp = roscomp.ros_timestamp(carla_timestamp.elapsed_seconds, from_sec=True)
-            print('ros_timestamp',self.ros_timestamp,
-             'carla_timestamp.elapsed_seconds', carla_timestamp.elapsed_seconds)
             self.clock_publisher.publish(Clock(clock=self.ros_timestamp))
 
     def destroy(self):

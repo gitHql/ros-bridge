@@ -120,7 +120,7 @@ class LogicalStatus:
 
         _ , = plt.plot([], label='setpoint={}'.format(round(accel_controller.setpoint , 3)))
         _ , = plt.plot([], label=' current.accel={}'.format(round(info.current.accel, 3)))
-        _ , = plt.plot([], label='accel_control_pedal_delta={}'.format(
+        _ , = plt.plot([], label='accel_control_pedal_delta = {}'.format(
             round(info.status.accel_control_pedal_delta, 5) ))
         
         self.max_delta_pedal = max(self.max_delta_pedal, 
@@ -139,7 +139,7 @@ class LogicalStatus:
             self.clean_plot()
 
     def clean_length(self, imu_hz):
-        return 10 * imu_hz
+        return 2 * imu_hz
 
     percent_changed_threhold = 0.3
 
