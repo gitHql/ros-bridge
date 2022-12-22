@@ -21,6 +21,10 @@ from sensor_msgs.msg import Imu
 from carla_msgs.msg import CarlaEgoVehicleStatus  # pylint: disable=no-name-in-module,import-error
 import random, numpy as np
 from random import uniform, choice
+
+from std_msgs.msg import Float32
+
+
 import pygame
 
 try:
@@ -37,16 +41,13 @@ try:
     from pygame.locals import K_SLASH
     from pygame.locals import K_SPACE
     from pygame.locals import K_UP
-    from pygame.locals import K_a
-    from pygame.locals import K_d
-    from pygame.locals import K_h
-    from pygame.locals import K_m
-    from pygame.locals import K_p
-    from pygame.locals import K_q
-    from pygame.locals import K_s
-    from pygame.locals import K_w
-    from pygame.locals import K_b
+    
+    from pygame.locals import K_a,K_b, K_c,K_d,K_e, K_f,K_g,K_h,K_i
+    from pygame.locals import K_j, K_k,K_l,K_m,K_n,K_o,K_p,K_q,K_r
+    from pygame.locals import K_s, K_t, K_u,K_v,K_w,K_x,K_y, K_z
+
     from pygame.locals import K_F1, K_F2, K_F3,K_F4,K_F5,K_F6,K_F7,K_F8,K_F9,K_F10,K_F11, K_F12
+    from pygame.locals import K_0, K_1, K_2, K_3, K_4, K_5, K_6, K_7, K_8, K_9
 except ImportError:
     raise RuntimeError('cannot import pygame, make sure pygame package is installed')
 
@@ -66,10 +67,32 @@ class TestBaseOnSpeed(CompatibleNode):
            qos_profile=10
         )
 
+        
 
-        self.control_publisher = self.new_publisher(CL_VehicleCommand,  
+
+        self.control_publisher = self.new_publisher(
+            CL_VehicleCommand,  
             "/carla/ego_vehicle/ackermann_cmd", 
             qos_profile=10)
+        
+        self.Kp_publisher = self.new_publisher(
+            Float32,
+            "/control/Kp",
+           qos_profile=10
+        )
+
+        self.render_fixed_delay_publisher = self.new_publisher(
+            Float32,
+            "/carla/sensors/delay_time",
+           qos_profile=10
+        )
+
+        self.clean_render  = self.new_publisher(
+            Float32,
+            "/control/clean_render",
+           qos_profile=10
+        )
+       
 
     def vehicle_status_updated(self, vehicle_status):
         self.vehicle_status = vehicle_status
@@ -167,7 +190,8 @@ class TestBaseOnSpeed(CompatibleNode):
 
     @staticmethod
     def _is_quit_shortcut(key):
-        return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
+        return (key == K_ESCAPE) or (\
+            key == K_q and pygame.key.get_mods() & KMOD_CTRL)
 
     def parse_event(self):
         has_event = False
@@ -178,41 +202,49 @@ class TestBaseOnSpeed(CompatibleNode):
                 return True
             elif event.type == pygame.KEYUP:
                 has_event = True
+
                 if self._is_quit_shortcut(event.key):
                     return True
-                elif event.key == K_F1:
-                    self.target = -6
-                elif event.key == K_F2:
-                    self.target = -5
-                elif event.key == K_F3:
-                    self.target = -4
-                elif event.key == K_F4:
-                    self.target = -3
-                elif event.key == K_F5:
-                    self.target = -2
-                elif event.key == K_F6:
-                    self.target = -1
-                elif event.key == K_F7:
-                    self.target = 0
-                elif event.key == K_F8:
-                    self.target = 1
-                elif event.key == K_F9:
-                    self.target = 2
-                elif event.key == K_F10:
-                    self.target = 3
-                elif event.key == K_F11:
-                    self.target = 3.7
-                elif event.key == K_DOWN:
-                    self.target -= 0.5
-                elif event.key == K_UP:
-                    self.target += 0.5
-                elif event.key == K_LEFT:
-                    self.target -= 0.1
-                elif event.key == K_RIGHT:
-                    self.target += 0.1
-                    
-                self.target = np.clip(self.target, -7.2, 3.7)
-                self.publish_cl_control()
+
+                key = event.key
+                print(key)
+                f_keys =  [K_F1, K_F2, K_F3, K_F4, K_F5, K_F6, K_F7, 
+                K_F8, K_F9, K_F10, K_F11, K_F12]
+                udlr_keys = [K_DOWN, K_UP, K_LEFT, K_RIGHT]
+                if key in f_keys + udlr_keys:
+
+                    if key in f_keys:
+                        kv = {K_F1:-6, K_F2:-5, K_F3:-4, K_F4:-3, K_F5:-2, 
+                        K_F6:-1, K_F7:0, K_F8:1 ,K_F9:2, K_F10:3, K_F11:3.7, 
+                        K_F12:4}
+
+                        self.target = kv[key]
+                        
+                    elif key == K_DOWN:
+                        self.target -= 0.5
+                    elif key == K_UP:
+                        self.target += 0.5
+                    elif key == K_LEFT:
+                        self.target -= 0.1
+                    elif key == K_RIGHT:
+                        self.target += 0.1
+
+                    self.target = np.clip(self.target, -7.2, 3.7)
+                    self.publish_cl_control()
+                elif key in [K_1, K_2, K_3, K_4, K_5,]:
+                    kv = { K_1:5,K_2:0.5, K_3:0.1, K_4:0.05, K_5:0.0}
+                    self.render_fixed_delay_publisher.publish(Float32(kv[key]))
+                elif key in [ K_0, K_6, K_7, K_8, K_9]:
+
+                    kv = {K_6:0.02, K_7:0.018,
+                     K_8:0.016, K_9:0.014,K_0:0.012}
+                    self.Kp_publisher.publish(Float32(kv[key]))
+
+                    #记录,0.14：30kmkp以内0到3，可以在40个step也就是200ms内达到目标，且几乎没有超出
+                elif key == K_c:
+                    self.clean_render.publish(Float32())
+
+               
 
     def publish_cl_control(self):
         print('will send accel {} angle {} '.format(self.target, self.angle))
@@ -236,80 +268,6 @@ class TestBaseOnSpeed(CompatibleNode):
 
         self.control_publisher.publish(msg)
         
-        # print(round( imu_msg.linear_acceleration.x, 3 ), round( self.target, 3))
-
-
-
-    #     reached_target = -0.1 < imu_msg.linear_acceleration.x  -  self.target < 0.1
-    #     near_zero = (-0.1 < imu_msg.linear_acceleration.x < 0.1)
-    #     from random import uniform
-
-    #     if reached_target:
-    #         self.reached_counting += 1
-            
-    #         if self.reached_counting > 500:
-    #             self.reached_counting = 0
-    #             if self.target > 0:
-    #                 start, end = -self.PID_MAX_TARGET, 0
-    #             else:
-    #                 start, end = 0, self.PID_MAX_TARGET
-
-    #             # start, end = 0, self.PID_MAX_TARGET  #屏蔽正负区间的翻转
-    #             self.target = round(uniform(start, end), 1)
-    #             print('======================target changed to {}'.format(self.target))
-    #     else:
-    #         self.reached_counting -= 2
-            
-    #         if self.target > 0 and   imu_msg.linear_acceleration.x < self.target:
-    #             self.max_accel_count += 1
-    #         else:
-    #             self.max_accel_count = 0
-            
-    #         if self.max_accel_count > 100:
-    #             self.max_accel_count = 0
-    #             print("max_speed reached but accel won't kee")
-    #             self.target =round(uniform(-self.PID_MAX_TARGET, 0), 1)
-
-    #         if self.target < 0 and  imu_msg.linear_acceleration.x > self.target:
-    #             self.won_reach_negative_count += 1
-    #         else:
-    #             self.won_reach_negative_count = 0
-    #         if self.won_reach_negative_count > 100:
-    #             self.won_reach_negative_count = 0
-    #             print("already min accel but accel won't get there", self.target)
-    #             self.target =round(uniform(0,self.PID_MAX_TARGET), 1)
-
-    #         else:
-    #             pass
-    #             # print('invalid logic, target=', self.target, 'actual=', imu_msg.linear_acceleration.x)
-    #     self.publish_cl_control()
-
-    # PID_MAX_TARGET = 1
-    # target = 1
-    # reached_counting = 0
-    # max_accel_count = 0
-    # won_reach_negative_count = 0
-
-    # def publish_cl_control(self):
-    #     import numpy
-    #     self.target = numpy.clip(self.target, -self.PID_MAX_TARGET, self.PID_MAX_TARGET)
-    #     msg = CL_VehicleCommand()
-    #     msg.header.seq = 1 
-    #     # msg.stamp = 0
-    #     # msg.frame_id= 'ssss'
-    #     msg.CL_stSysSts= 1
-    #     msg.CL_flgAccelEnable= True
-    #     msg.CL_flgStrWhlEnable= False
-    #     msg.CL_nStrWhlSpeed= 0
-    #     msg.CL_flgGearEnable= False
-    #     msg.CL_flgLeftTurnLight= 1
-    #     msg.CL_flgRightTurnLight= 1
-    #     msg.CL_phiTargetStrAngle= 0.0
-
-    #     msg.CL_gearTargetGear= 1
-    #     msg.CL_aTargetLongAcc= self.target
-
-    #     self.control_publisher.publish(msg)
     def run(self):
         """
         Control loop

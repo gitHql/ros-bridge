@@ -8,8 +8,12 @@ plt.rcParams['figure.dpi'] = 100
 
 
 def plot_pid_imureal(pedal_history, pid_val, real_val,  \
-    output_throttles, brake_upper_borders):
+    output_throttles, brake_upper_borders, \
+    throttle_deltas, target_deltas):
     plt.ion()  
+
+    # a , = plt.plot(throttle_deltas, label='real throttle_deltas')
+    # a , = plt.plot(target_deltas, label='pid target_deltas')
 
     a , = plt.plot(pid_val, label='pid want acc')
 
@@ -93,11 +97,17 @@ class LogicalStatus:
         self.pedal_history = []
         self.brake_upper_borders = []
         self.throttle_lower_borders = []
+        self.throttle_deltas = []
+        self.target_deltas = []
 
-    def append_info(self, info):
+    def append_info(self, info:EgoVehicleControlInfo):
         self.pedal_history.append(info.status.accel_control_pedal_target)
         self.brake_upper_borders .append(info.status.brake_upper_border )
-        self.throttle_lower_borders.append(info.output.throttle )
+        self.throttle_lower_borders.append(info.status.throttle_lower_border )
+
+    def append_throttle_delta(self, throttle_delta:float, target_delta:float):
+        self.throttle_deltas.append(throttle_delta )
+        self.target_deltas.append(1.3 if target_delta * throttle_delta > 0 else -1.3)
 
     def make_plt(self, info:EgoVehicleControlInfo,  control_loop_rate:int, accel_controller):
         if self.dont_display:
@@ -132,14 +142,16 @@ class LogicalStatus:
         _, = plt.plot([], label='throttle={}'.format(info.output.throttle))
 
         plot_pid_imureal(self.pedal_history, self.all_pid_accel,
-         self.all_imu_accer, self.throttle_lower_borders, self.brake_upper_borders)
+         self.all_imu_accer, self.throttle_lower_borders, self.brake_upper_borders,
+         self.throttle_deltas,
+         self.target_deltas)
         
         imu_hz = 1/ control_loop_rate
         if len(self.all_pid_accel) >= self.clean_length(imu_hz): # 1/self.control_loop_rate :
             self.clean_plot()
 
     def clean_length(self, imu_hz):
-        return 2 * imu_hz
+        return 10 * imu_hz
 
     percent_changed_threhold = 0.3
 
