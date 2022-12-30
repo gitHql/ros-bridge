@@ -222,22 +222,31 @@ class TestBaseOnSpeed(CompatibleNode):
                         
                     elif key == K_DOWN:
                         self.target -= 0.5
+                        self.angle = 0
                     elif key == K_UP:
                         self.target += 0.5
+                        self.angle = 0
                     elif key == K_LEFT:
-                        self.target -= 0.1
+                        # self.target -= 0.1
+                        self.angle -= 10
                     elif key == K_RIGHT:
-                        self.target += 0.1
+                        # self.target += 0.1
+                        self.angle += 10
 
                     self.target = np.clip(self.target, -7.2, 3.7)
                     self.publish_cl_control()
+
+                    while(abs(self.angle) >= 1):
+                        self.angle -=1
+                        self.publish_cl_control()
+                    
                 elif key in [K_1, K_2, K_3, K_4, K_5,]:
-                    kv = { K_1:5,K_2:0.5, K_3:0.1, K_4:0.05, K_5:0.0}
+                    kv = { K_1:1,K_2:0.2, K_3:0.04, K_4:0.01, K_5:0.0}
                     self.render_fixed_delay_publisher.publish(Float32(kv[key]))
                 elif key in [ K_0, K_6, K_7, K_8, K_9]:
 
-                    kv = {K_6:0.02, K_7:0.018,
-                     K_8:0.016, K_9:0.014,K_0:0.012}
+                    kv = {K_6:0.015, K_7:0.014,
+                     K_8:0.013, K_9:0.012,K_0:0.011}
                     self.Kp_publisher.publish(Float32(kv[key]))
 
                     #记录,0.14：30kmkp以内0到3，可以在40个step也就是200ms内达到目标，且几乎没有超出
@@ -294,8 +303,9 @@ def main(args=None):
 
     try:
         controller = TestBaseOnSpeed()
+        from pygame import HWSURFACE, DOUBLEBUF
         display = pygame.display.set_mode((400,300),
-                                          pygame.HWSURFACE | pygame.DOUBLEBUF)
+            HWSURFACE | DOUBLEBUF)
 
         while roscomp.ok():
             clock.tick_busy_loop(200)

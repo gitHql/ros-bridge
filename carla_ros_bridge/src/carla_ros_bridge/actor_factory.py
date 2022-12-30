@@ -81,6 +81,14 @@ class ActorFactory(object):
 
         self.thread = Thread(target=self._update_thread)
 
+        from std_msgs.msg import Float32
+        self.vehicle_status_subscriber = node.new_subscription(
+            Float32,
+            "/carla/" + 'sensors' + "/delay_time",
+            self.sleep_time_update,
+           qos_profile=10
+        )
+
     def start(self):
         # create initially existing actors
         self.update_available_objects()
@@ -133,11 +141,20 @@ class ActorFactory(object):
 
         self.lock.release()
 
+    sleep_time = 0
+    def sleep_time_update(self, new_delay):
+        with self.lock:
+            self.sleep_time = new_delay.data
+            print('>>>>>>>>>>>>>>>>>>new delay', self.sleep_time)
+
     def update_actor_states(self, frame_id, timestamp):
         """
         update the state of all known actors
         """
         with self.lock:
+            if self.sleep_time > 0.0001:
+                import time
+                time.sleep(self.sleep_time)
             for actor_id in self.actors:
                 try:
                     self.actors[actor_id].update(frame_id, timestamp)

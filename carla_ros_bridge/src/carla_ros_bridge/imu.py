@@ -93,4 +93,5 @@ class ImuSensor(Sensor):
         imu_msg.orientation.z = quat[3]
 
         self.imu_publisher.publish(imu_msg)
+        print('rostime', self.node.get_time())
         

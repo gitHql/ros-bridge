@@ -19,10 +19,10 @@ def plot_pid_imureal(pedal_history, pid_val, real_val,  \
 
     b, = plt.plot(real_val,  linewidth=2, label='real_acc')
 
-    low = [val - (0.1 if val > 0 else 0.2 )for val in pid_val]
+    low = [val -0.1 for val in pid_val]
     a , = plt.plot(low,  linestyle='-.', label='pid_low')
 
-    high =  [val + (0.1 if val > 0 else 0.2) for val in pid_val]
+    high =  [val +0.1 for val in pid_val]
     a , = plt.plot(high,  linestyle='-.',label='pid_up')
 
     c, = plt.plot(pedal_history, linestyle='--',  label = 'target pedal')
